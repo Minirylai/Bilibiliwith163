@@ -128,7 +128,6 @@ remote: none
 - `src/dashboardSettings.js`、`GET /api/dashboard-settings`、`GET /api/wallpapers` 和禁用的 `POST /api/wallpapers/upload` 仍保留，但当前控制台主流程固定壁纸，没有完整的壁纸选择或上传 UI。
 - `public/app.js` 和 `public/dashboard.js` 重复实现了 `escapeHtml`、字体 CSS 拼接、颜色转换和滚动测量等前端工具函数；在无构建流程的静态前端中可以接受，但继续扩展时建议抽出共享脚本或引入轻量构建。
 - `scripts/watch-bilibili.js` 与 `src/bilibili.js` 重复了 B 站命令、地址和 Cookie 辅助解析逻辑；作为独立调试脚本可保留，但如果协议适配继续变化，应同步维护。
-- `queue.history` 和 `lastRequestByUser` 是无上限内存状态，长时间直播后可能增长；`publicState()` 只截断对外返回，不清理内部数组或 Map。
 - 手动点歌接口 `POST /api/request` 已存在，但控制台没有手动搜索/插入入口；目前更像调试或外部集成接口。
 
 ## 运行时组件
@@ -188,6 +187,7 @@ flowchart LR
 - `current`：当前歌曲
 - `queue`：待播队列
 - `history`：最近播放历史
+- `lastRequestByUser`：用户最近一次通过冷却检查的时间
 
 关键行为：
 
@@ -197,6 +197,8 @@ flowchart LR
 - `skipSong()` 是 `nextSong()` 的别名。
 - `resetPlayback()` 停止当前播放并清空队列。
 - `removeQueuedSong()` 只移除候选队列中的歌曲。
+- `history` 内部最多保留 `MAX_HISTORY_ITEMS` 条记录；`publicState()` 仍只返回最近 20 条，保持前端兼容。
+- `canUserRequest()` 每次检查时会清理超过 `USER_COOLDOWN_TTL_MS` 的用户冷却记录；实际 TTL 不会小于 `MIN_REQUEST_INTERVAL_MS`。
 
 ## 网易云登录逻辑
 
@@ -328,8 +330,10 @@ OBS 源不直接播放网易云外链，而是播放：
 | `BILI_COOKIE` | 空 | B 站 Cookie |
 | `REQUEST_COMMANDS` | `点歌,点播,网易云` | 点歌指令 |
 | `MAX_QUEUE_SIZE` | `30` | 队列上限 |
+| `MAX_HISTORY_ITEMS` | `100` | 内存中最近播放历史最大保留条数，`0` 表示不保留历史 |
 | `MAX_SEARCH_RESULTS` | `8` | 网易云搜索结果数 |
 | `MIN_REQUEST_INTERVAL_MS` | `8000` | 同用户点歌冷却 |
+| `USER_COOLDOWN_TTL_MS` | `3600000` | 用户冷却记录 TTL，实际值不会小于 `MIN_REQUEST_INTERVAL_MS` |
 | `PLAYER_VOLUME` | `0.75` | 播放器音量 |
 | `NCM_QUALITY` | `standard` | 网易云音质 |
 | `BILI_PROTO_VERSION` | `3` | B 站弹幕协议版本 |

@@ -26,10 +26,43 @@ function emitState() {
   bus.emit("queue:state", publicState());
 }
 
+function trimHistory() {
+  const maxItems = config.maxHistoryItems;
+  if (maxItems <= 0) {
+    history.length = 0;
+    return;
+  }
+
+  if (history.length > maxItems) {
+    history.splice(0, history.length - maxItems);
+  }
+}
+
+function recordHistory(song, reason) {
+  if (!song) return;
+  history.push({
+    ...song,
+    finishedAt: new Date().toISOString(),
+    finishReason: reason,
+  });
+  trimHistory();
+}
+
+function cleanupCooldowns(now = Date.now()) {
+  const ttlMs = Math.max(config.minRequestIntervalMs, config.userCooldownTtlMs);
+  for (const [key, last] of lastRequestByUser.entries()) {
+    if (now - last > ttlMs) {
+      lastRequestByUser.delete(key);
+    }
+  }
+}
+
 function canUserRequest(userId) {
   const key = userId || "anonymous";
+  const now = Date.now();
+  cleanupCooldowns(now);
   const last = lastRequestByUser.get(key) || 0;
-  const elapsed = Date.now() - last;
+  const elapsed = now - last;
   if (elapsed < config.minRequestIntervalMs) {
     return {
       ok: false,
@@ -37,7 +70,7 @@ function canUserRequest(userId) {
     };
   }
 
-  lastRequestByUser.set(key, Date.now());
+  lastRequestByUser.set(key, now);
   return {
     ok: true,
     remainingMs: 0,
@@ -80,13 +113,7 @@ function addSong(song, requester, keyword) {
 }
 
 function nextSong(reason = "ended") {
-  if (current) {
-    history.push({
-      ...current,
-      finishedAt: new Date().toISOString(),
-      finishReason: reason,
-    });
-  }
+  recordHistory(current, reason);
 
   current = queue.shift() || null;
   if (current) {
@@ -118,13 +145,7 @@ function removeQueuedSong(requestId) {
 }
 
 function resetPlayback() {
-  if (current) {
-    history.push({
-      ...current,
-      finishedAt: new Date().toISOString(),
-      finishReason: "reset",
-    });
-  }
+  recordHistory(current, "reset");
 
   current = null;
   queue.length = 0;

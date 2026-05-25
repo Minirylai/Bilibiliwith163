@@ -39,3 +39,76 @@
 剩余边界：
 
 - 样式重复覆盖、共享外观 schema、壁纸/控制台设置收敛、前端工具函数抽取等维护项已写入 `TODO.md`，本轮不一次性重构。
+
+## 2026-05-25 T02 队列内存状态上限
+
+任务 ID：T02
+
+目标：
+
+- 为 `queue.history` 增加最大保留条数，避免长时间直播后历史数组无界增长。
+- 为 `lastRequestByUser` 增加 TTL 清理，避免用户冷却 Map 在长时间运行中持续增长。
+
+范围：
+
+- `src/config.js`
+- `src/queue.js`
+- `.env.example`
+- `docs/TODO.md`
+- `docs/ARCHITECTURE.md`
+
+预计修改文件：
+
+- `src/config.js` 新增历史上限和冷却 TTL 环境配置。
+- `src/queue.js` 在写入历史和检查冷却时做清理。
+- 文档同步配置项和 TODO 状态。
+
+风险点：
+
+- 不能改变现有 `publicState()` 对前端返回最近 20 条历史的兼容行为。
+- 冷却 TTL 不能小于 `MIN_REQUEST_INTERVAL_MS`，否则会绕过冷却。
+
+验收标准：
+
+- 历史记录有最大保留条数。
+- 冷却 Map 会清理过期用户。
+- 对外队列状态结构保持兼容。
+
+当前 Git 状态：
+
+- 开始前工作区干净，HEAD 为 `11ff621 docs: record verification notes`。
+- 已创建本地备份 tag：`backup-before-t02-20260525`。
+
+实际修改文件：
+
+- `src/config.js`
+- `src/queue.js`
+- `.env.example`
+- `docs/TODO.md`
+- `docs/ARCHITECTURE.md`
+- `docs/WORK_HISTORY.md`
+
+关键决策：
+
+- 新增 `MAX_HISTORY_ITEMS`，默认 `100`，用于限制内存中的完整历史数组；`publicState()` 仍只返回最近 20 条，保持前端兼容。
+- 新增 `USER_COOLDOWN_TTL_MS`，默认 `3600000`，并在配置层保证实际值不小于 `MIN_REQUEST_INTERVAL_MS`。
+- `queue.js` 统一通过 `recordHistory()` 写入历史，避免 `nextSong()` 和 `resetPlayback()` 分别维护裁剪逻辑。
+- `canUserRequest()` 在每次冷却检查前执行过期冷却记录清理，不增加后台定时器。
+
+验证命令和结果：
+
+- `node --check src\config.js; node --check src\queue.js; node --check src\server.js`：通过。
+- 本地 Node 行为脚本：验证 `MAX_HISTORY_ITEMS=2` 时历史只保留最近 2 条，并验证 `USER_COOLDOWN_TTL_MS` 不小于 `MIN_REQUEST_INTERVAL_MS`：通过。
+- `git diff --check`：待提交前执行。
+- 未运行 `npm test`，因为该命令会访问网易云和 B 站外部接口；本轮改动已用本地语法检查和本地行为脚本覆盖。
+
+未完成边界：
+
+- T03 仍需单独处理冷却扣减时机和队列上限语义。
+- T14 后续应补正式单元测试，把本轮行为脚本沉淀进测试套件。
+
+是否更新 TODO：是，T02 已从当前待办列表移除，并写入已实现能力。
+
+是否更新 ARCHITECTURE：是，补充历史上限、冷却 TTL 和新增环境变量。
+
+提交哈希：待提交后补充。

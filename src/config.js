@@ -7,6 +7,10 @@ const toNumber = (value, fallback) => {
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
+const toNonNegativeInteger = (value, fallback) => {
+  return Math.max(0, Math.floor(toNumber(value, fallback)));
+};
+
 const toBoolean = (value, fallback = false) => {
   if (value == null || value === "") return fallback;
   return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
@@ -20,22 +24,29 @@ const parseCommands = (value) => {
     .filter(Boolean);
 };
 
+const minRequestIntervalMs = toNonNegativeInteger(process.env.MIN_REQUEST_INTERVAL_MS, 8000);
+
 const config = {
   port: toNumber(process.env.PORT, 3888),
   roomId: toNumber(process.env.BILI_ROOM_ID, 1),
   cookie: process.env.BILI_COOKIE || "",
   requestCommands: parseCommands(process.env.REQUEST_COMMANDS),
-  maxQueueSize: toNumber(process.env.MAX_QUEUE_SIZE, 30),
-  maxSearchResults: toNumber(process.env.MAX_SEARCH_RESULTS, 8),
-  minRequestIntervalMs: toNumber(process.env.MIN_REQUEST_INTERVAL_MS, 8000),
+  maxQueueSize: toNonNegativeInteger(process.env.MAX_QUEUE_SIZE, 30),
+  maxSearchResults: toNonNegativeInteger(process.env.MAX_SEARCH_RESULTS, 8),
+  minRequestIntervalMs,
+  maxHistoryItems: toNonNegativeInteger(process.env.MAX_HISTORY_ITEMS, 100),
+  userCooldownTtlMs: Math.max(
+    minRequestIntervalMs,
+    toNonNegativeInteger(process.env.USER_COOLDOWN_TTL_MS, 60 * 60 * 1000),
+  ),
   playerVolume: Math.min(1, Math.max(0, toNumber(process.env.PLAYER_VOLUME, 0.75))),
   ncmQuality: process.env.NCM_QUALITY || "standard",
-  biliProtover: toNumber(process.env.BILI_PROTO_VERSION, 3),
+  biliProtover: toNonNegativeInteger(process.env.BILI_PROTO_VERSION, 3),
   allowDuplicates: toBoolean(process.env.ALLOW_DUPLICATES, false),
   autoplay: toBoolean(process.env.AUTOPLAY, true),
-  requestTimeoutMs: toNumber(process.env.REQUEST_TIMEOUT_MS, 12000),
-  audioCacheMaxMb: toNumber(process.env.AUDIO_CACHE_MAX_MB, 512),
-  audioCacheMaxFiles: toNumber(process.env.AUDIO_CACHE_MAX_FILES, 120),
+  requestTimeoutMs: toNonNegativeInteger(process.env.REQUEST_TIMEOUT_MS, 12000),
+  audioCacheMaxMb: toNonNegativeInteger(process.env.AUDIO_CACHE_MAX_MB, 512),
+  audioCacheMaxFiles: toNonNegativeInteger(process.env.AUDIO_CACHE_MAX_FILES, 120),
   publicDir: path.resolve(__dirname, "..", "public"),
 };
 
