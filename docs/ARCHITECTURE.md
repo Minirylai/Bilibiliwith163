@@ -78,7 +78,7 @@ docs/
 
 ```text
 branch: main
-baseline_commit: pending-first-backup
+baseline_commit: f82a12d chore: initialize local git baseline
 user.name: Bilibiliwith163 Local
 user.email: bilibiliwith163-local@example.invalid
 core.autocrlf: false

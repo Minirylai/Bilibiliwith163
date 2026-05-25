@@ -30,7 +30,16 @@
 
 本项目使用本地 Git 仓库作为恢复点。文档记录负责说明任务意图、边界和验证结果；Git 提交负责提供真正可恢复的代码状态。
 
-当前仓库基线会在首次提交后写入 `ARCHITECTURE.md` 的“本地 Git 保护基线”章节。
+当前仓库基线：
+
+```text
+branch: main
+baseline_commit: f82a12d chore: initialize local git baseline
+user.name: Bilibiliwith163 Local
+user.email: bilibiliwith163-local@example.invalid
+core.autocrlf: false
+remote: none
+```
 
 开始任何 TODO 前：
 

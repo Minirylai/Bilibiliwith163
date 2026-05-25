@@ -30,7 +30,10 @@
 
 验证结果：
 
-- 待本轮代码修改完成后补充实际命令和结果。
+- `node --check` 已覆盖 `src/`、`public/`、`scripts/`、`test/` 下所有 JS 文件，结果通过。
+- `git diff --cached --check` 在首次提交前通过。
+- 已创建首次备份提交：`f82a12d chore: initialize local git baseline`。
+- 本轮未运行 `npm test`，因为该命令会访问网易云和 B 站外部接口，当前变更主要是文档、配置模板和前端/外观本地语法层改动。
 
 剩余边界：
 
