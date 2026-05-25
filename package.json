@@ -1,0 +1,29 @@
+{
+  "name": "bilibiliwith163",
+  "version": "1.0.0",
+  "description": "Bilibili live danmaku song requests for an OBS browser source.",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node src/server.js",
+    "test": "node test/api-smoke.js",
+    "debug:bili": "node scripts/watch-bilibili.js"
+  },
+  "keywords": [
+    "bilibili",
+    "danmaku",
+    "netease-cloud-music",
+    "obs"
+  ],
+  "author": "",
+  "license": "MIT",
+  "type": "commonjs",
+  "dependencies": {
+    "@neteasecloudmusicapienhanced/api": "^4.32.1",
+    "bilibili-live-danmaku": "^0.7.15",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "socket.io": "^4.8.3",
+    "ws": "^8.20.1"
+  }
+}

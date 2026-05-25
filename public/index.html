@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>B站弹幕点歌</title>
+    <link rel="stylesheet" href="/style.css?v=ui-20260518-text-scroll-2" />
+  </head>
+  <body class="obs-source">
+    <main class="overlay-shell compact-player" id="player-shell">
+      <section class="now-playing" aria-label="当前播放">
+        <div class="cover-frame">
+          <img id="cover" src="/placeholder.svg" alt="" />
+        </div>
+
+        <div class="track-copy">
+          <div class="track-main-row">
+            <h1 class="title-marquee auto-scroll-line" aria-live="polite">
+              <span id="title" class="title-marquee-text auto-scroll-text">等待点歌</span>
+            </h1>
+            <p id="artist" class="auto-scroll-line"><span class="auto-scroll-text">弹幕发送：点歌 歌名</span></p>
+          </div>
+
+          <div class="marquee-line" aria-label="点歌信息">
+            <div id="marquee" class="marquee-text auto-scroll-line">
+              <span class="auto-scroll-text">等待来自直播间的点歌</span>
+            </div>
+          </div>
+
+          <div class="progress-row" aria-label="播放进度">
+            <div class="progress-track">
+              <div id="progress-fill" class="progress-fill"></div>
+            </div>
+            <span id="progress-time" class="progress-time">00:00 / 00:00</span>
+          </div>
+        </div>
+
+        <div class="inline-actions" aria-label="播放控制">
+          <button id="toggle-play" class="transport-button" type="button" title="Pause or resume" aria-label="Pause or resume" data-icon="pause">
+            <span class="control-glyph" aria-hidden="true"></span>
+          </button>
+          <button id="next-song" class="transport-button" type="button" title="Next song" aria-label="Next song" data-icon="next">
+            <span class="control-glyph" aria-hidden="true"></span>
+          </button>
+        </div>
+      </section>
+
+      <section class="queue-panel" aria-label="候选歌列表">
+        <ol id="queue" class="queue-list"></ol>
+      </section>
+
+      <div class="player-status" id="status" hidden></div>
+    </main>
+
+    <audio id="audio" preload="auto" crossorigin="anonymous"></audio>
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/app.js?v=ui-20260518-text-scroll-2"></script>
+  </body>
+</html>

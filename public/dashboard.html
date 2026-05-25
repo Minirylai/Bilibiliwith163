@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>B站弹幕点歌控制台</title>
+    <link rel="stylesheet" href="/style.css?v=dashboard-local-font-preview" />
+  </head>
+  <body class="dashboard">
+    <main class="dashboard-shell blog-dashboard">
+      <header class="blog-hero glass-card">
+        <div class="hero-main">
+          <p class="eyebrow" id="dash-status">连接中...</p>
+          <h1>B站弹幕点歌控制台</h1>
+          <p class="hero-signature">By Yh</p>
+        </div>
+        <div class="actions hero-actions">
+          <div class="hero-button-row">
+            <a class="ghost-link" href="/" target="_blank" rel="noreferrer">打开 OBS 源</a>
+            <button id="skip" type="button" title="切歌">跳过</button>
+            <button id="clear" type="button" title="清空待播队列">清空队列</button>
+            <button id="reset" type="button" title="停止当前歌曲并清空">停止</button>
+          </div>
+          <form id="room-form" class="room-form">
+            <label>
+              追踪房间号
+              <input id="room-id-input" type="number" min="1" step="1" inputmode="numeric" />
+            </label>
+            <button type="submit">切换房间</button>
+            <span id="room-save-state" class="panel-note"></span>
+          </form>
+        </div>
+      </header>
+
+      <section class="top-control-row glass-card">
+        <div class="ncm-login-compact">
+          <div>
+            <h2>网易云登录</h2>
+            <p id="ncm-login-status" class="empty">检查登录状态中...</p>
+          </div>
+          <div class="ncm-login-actions">
+            <button id="ncm-login-open" type="button">二维码登录</button>
+            <button id="ncm-login-refresh" type="button">刷新状态</button>
+            <button id="ncm-login-logout" type="button">退出登录</button>
+          </div>
+          <div id="ncm-login-qr" class="ncm-login-qr" hidden>
+            <img id="ncm-login-qr-img" alt="网易云二维码登录" />
+            <p id="ncm-login-qr-tip">请用网易云音乐 App 扫码确认登录</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="dashboard-grid">
+        <div class="tool-panel glass-card current-panel">
+          <h2>当前播放</h2>
+          <div id="dash-current" class="empty">暂无歌曲</div>
+          <audio id="dash-audio" preload="none" hidden></audio>
+        </div>
+        <div class="tool-panel glass-card">
+          <h2>弹幕与请求</h2>
+          <ul id="events" class="event-list"></ul>
+        </div>
+        <div class="tool-panel glass-card">
+          <h2>队列</h2>
+          <ol id="dash-queue" class="queue-list dashboard-queue-list"></ol>
+        </div>
+      </section>
+
+      <section class="dashboard-editor-grid">
+        <section class="tool-panel glass-card editor-panel">
+          <div class="panel-heading-row">
+            <div>
+              <h2>点歌机编辑器</h2>
+              <p id="appearance-save-state" class="panel-note"></p>
+            </div>
+            <div class="editor-action-row">
+              <button id="appearance-save-preset" type="button">保存配置</button>
+              <button id="appearance-load-preset" type="button">读取配置</button>
+              <button id="appearance-reset" type="button">恢复默认</button>
+            </div>
+          </div>
+
+          <div class="editor-layout">
+            <div class="editor-controls">
+              <div class="control-group">
+                <h3>播放器尺寸</h3>
+                <label>左右宽 <input id="editor-widget-width" type="number" min="360" max="980" step="10" /></label>
+                <label>上下长 <input id="editor-player-height" type="number" min="100" max="260" step="4" /></label>
+                <label>播放器圆角 <input id="editor-player-radius" type="number" min="0" max="48" step="1" /></label>
+              </div>
+              <div class="control-group">
+                <h3>候选框</h3>
+                <label>上下长 <input id="editor-queue-height" type="number" min="90" max="620" step="10" /></label>
+                <label>单条高度 <input id="editor-queue-item-height" type="number" min="34" max="96" step="2" /></label>
+                <label>候选框圆角 <input id="editor-queue-radius" type="number" min="0" max="48" step="1" /></label>
+              </div>
+              <div class="control-group">
+                <h3>消息播报栏</h3>
+                <label>上下长 <input id="editor-status-height" type="number" min="26" max="90" step="2" /></label>
+                <label>播报栏圆角 <input id="editor-status-radius" type="number" min="0" max="48" step="1" /></label>
+              </div>
+              <div class="control-group">
+                <h3>毛玻璃</h3>
+                <label>透明度 <input id="editor-glass-opacity" type="range" min="8" max="72" /></label>
+                <label>模糊 <input id="editor-glass-blur" type="range" min="0" max="40" /></label>
+                <label>播放器底色 <input id="editor-player-glass-color" type="color" /></label>
+                <label>候选框底色 <input id="editor-queue-glass-color" type="color" /></label>
+                <label>播报栏底色 <input id="editor-status-glass-color" type="color" /></label>
+              </div>
+
+              <div class="font-controls">
+                <h3>字体样式</h3>
+                <div class="local-font-actions">
+                  <button id="load-local-fonts" type="button">读取本机字体</button>
+                  <p id="local-font-status" class="panel-note"></p>
+                </div>
+                <div class="font-grid">
+                  <div class="font-row">
+                    <span>主标题</span>
+                    <input id="editor-title-size" type="number" min="18" max="56" aria-label="主标题字号" />
+                    <input id="editor-title-color" type="color" aria-label="主标题颜色" />
+                    <select id="editor-title-font" aria-label="主标题字体"></select>
+                  </div>
+                  <div class="font-row">
+                    <span>作者</span>
+                    <input id="editor-artist-size" type="number" min="12" max="34" aria-label="作者字号" />
+                    <input id="editor-artist-color" type="color" aria-label="作者颜色" />
+                    <select id="editor-artist-font" aria-label="作者字体"></select>
+                  </div>
+                  <div class="font-row">
+                    <span>点歌栏</span>
+                    <input id="editor-request-size" type="number" min="12" max="30" aria-label="点歌栏字号" />
+                    <input id="editor-request-color" type="color" aria-label="点歌栏颜色" />
+                    <select id="editor-request-font" aria-label="点歌栏字体"></select>
+                  </div>
+                  <div class="font-row">
+                    <span>候选</span>
+                    <input id="editor-queue-size" type="number" min="12" max="34" aria-label="候选字号" />
+                    <input id="editor-queue-color" type="color" aria-label="候选颜色" />
+                    <select id="editor-queue-font" aria-label="候选字体"></select>
+                  </div>
+                  <div class="font-row">
+                    <span>播报</span>
+                    <input id="editor-status-size" type="number" min="11" max="28" aria-label="播报字号" />
+                    <input id="editor-status-color" type="color" aria-label="播报颜色" />
+                    <select id="editor-status-font" aria-label="播报字体"></select>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="editor-preview">
+              <div class="preview-heading-row">
+                <h3>实际播放器预览</h3>
+                <button id="preview-wallpaper-toggle" type="button" aria-pressed="false">底图预览</button>
+              </div>
+              <div id="preview-shell" class="overlay-shell preview-overlay-shell">
+              <div id="editor-player-resizer" class="editor-player-resizer">
+                <section class="now-playing preview-now-playing" aria-label="播放器预览">
+                  <div class="cover-frame">
+                    <img id="preview-cover" src="/placeholder.svg" alt="" />
+                  </div>
+
+                  <div class="track-copy">
+                    <div class="track-main-row">
+                      <h1 class="title-marquee auto-scroll-line">
+                        <span id="preview-track-title" class="title-marquee-text auto-scroll-text">等待点歌</span>
+                      </h1>
+                      <p class="auto-scroll-line">
+                        <span id="preview-track-artist" class="auto-scroll-text">弹幕点歌</span>
+                      </p>
+                    </div>
+
+                    <div class="marquee-line">
+                      <div class="marquee-text auto-scroll-line">
+                        <span id="preview-track-request" class="auto-scroll-text">等待来自直播间的点歌</span>
+                      </div>
+                    </div>
+
+                    <div class="progress-row">
+                      <div class="progress-track">
+                        <div class="progress-fill preview-progress-fill"></div>
+                      </div>
+                      <span class="progress-time">00:00 / 00:00</span>
+                    </div>
+                  </div>
+
+                  <div class="inline-actions" aria-label="播放控制预览">
+                    <button class="transport-button" type="button" tabindex="-1" data-icon="pause">
+                      <span class="control-glyph" aria-hidden="true"></span>
+                    </button>
+                    <button class="transport-button" type="button" tabindex="-1" data-icon="next">
+                      <span class="control-glyph" aria-hidden="true"></span>
+                    </button>
+                  </div>
+                </section>
+              </div>
+              <div id="editor-queue-resizer" class="editor-queue-resizer">
+                <section class="queue-panel preview-queue-panel" aria-label="队列预览">
+                  <ol id="preview-queue-list" class="queue-list"></ol>
+                </section>
+              </div>
+              <div id="preview-status" class="player-status">已加入队列：大貔貅（DJ阿智版）</div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
+    </main>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/dashboard.js?v=dashboard-local-font-preview"></script>
+  </body>
+</html>
