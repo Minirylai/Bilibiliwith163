@@ -111,4 +111,4 @@
 
 是否更新 ARCHITECTURE：是，补充历史上限、冷却 TTL 和新增环境变量。
 
-提交哈希：待提交后补充。
+提交哈希：`0df3e6b fix: cap queue runtime state`
