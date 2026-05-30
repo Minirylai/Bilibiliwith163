@@ -86,7 +86,7 @@ baseline_commit: f82a12d chore: initialize local git baseline
 user.name: Bilibiliwith163 Local
 user.email: bilibiliwith163-local@example.invalid
 core.autocrlf: false
-remote: none
+remote: origin https://github.com/Minirylai/Bilibiliwith163.git
 ```
 
 相关文件：

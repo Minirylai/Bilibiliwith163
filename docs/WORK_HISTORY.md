@@ -448,6 +448,45 @@
 
 提交哈希：无，T20 未完成。
 
+## 2026-05-30 T20 GitHub remote 配置与首次推送完成
+
+任务 ID：T20
+
+目标：
+
+- 使用用户提供的 GitHub 仓库 `https://github.com/Minirylai/Bilibiliwith163` 配置远端并推送 `main`。
+
+范围：
+
+- 本地 Git remote 配置
+- `docs/TODO.md`
+- `docs/ARCHITECTURE.md`
+- `docs/WORK_HISTORY.md`
+
+验证命令和结果：
+
+- `git status --short`：推送前工作区干净。
+- `git remote -v`：推送前无 remote。
+- `git branch --show-current`：`main`。
+- `git remote add origin https://github.com/Minirylai/Bilibiliwith163.git`：成功。
+- `git push -u origin main`：成功，`main` 已跟踪 `origin/main`。
+
+关键决策：
+
+- 使用用户已创建的空仓库，不再依赖 GitHub CLI。
+- 推送完成后同步更新 TODO 和架构文档中的 remote 状态。
+
+未完成边界：
+
+- 尚未配置 GitHub Actions CI 和 Release 检查清单；保留为后续维护项。
+- T21 的 exe 产物验证仍受本机缺少 `patch` 命令限制。
+
+是否更新 TODO：是，T20 已从当前待办列表移除，并补入已实现能力。
+
+是否更新 ARCHITECTURE：是，remote 从 `none` 更新为 GitHub origin。
+
+提交哈希：待提交后补充。
+
 ## 2026-05-30 T21 可执行软件打包调研与配置
 
 任务 ID：T21
