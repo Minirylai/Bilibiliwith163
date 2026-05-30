@@ -321,3 +321,40 @@
 是否更新 ARCHITECTURE：否，本轮未改变架构。
 
 提交哈希：`1dd09ab docs: record github safety scan`
+
+## 2026-05-30 T18 根目录开源 README 重写
+
+任务 ID：T18
+
+目标：
+
+- 将根目录 `README.md` 从本地使用说明升级为 GitHub 开源入口。
+- 明确展示项目已经具备 3 种以上相互独立功能。
+- 补齐安装、启动、OBS 接入、配置、接口、安全提示和文档索引。
+
+范围：
+
+- `README.md`
+- `docs/TODO.md`
+- `docs/WORK_HISTORY.md`
+
+关键决策：
+
+- README 使用中文作为主文档语言，保持与项目现有文档一致。
+- 第三方引用入口在 T19 实现前先标明边界，避免误导用户直接 `require()` 旧服务入口。
+- README 明确说明项目不会绕过平台权限、会员限制或版权限制。
+
+验证命令和结果：
+
+- `Get-Content -LiteralPath README.md -Encoding UTF8`：确认 README 可用显式 UTF-8 正常读取。
+- `git diff --check`：通过。
+
+未完成边界：
+
+- T19 完成后需要把 README 的“第三方引用”章节从计划说明改成真实导入示例。
+
+是否更新 TODO：是，T18 已从当前待办列表移除，并补入已实现能力。
+
+是否更新 ARCHITECTURE：否，本轮未改变架构。
+
+提交哈希：待提交后补充。
