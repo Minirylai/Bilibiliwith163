@@ -410,3 +410,102 @@
 是否更新 ARCHITECTURE：是，新增第三方引用入口说明。
 
 提交哈希：`c2119c0 feat: add library entrypoint`
+
+## 2026-05-30 T20 GitHub 仓库创建和首推尝试
+
+任务 ID：T20
+
+目标：
+
+- 创建 GitHub 仓库并推送当前 `main` 分支。
+
+范围：
+
+- 本地 Git remote 状态
+- GitHub CLI / token 状态
+
+验证命令和结果：
+
+- `git status --short`：T20 开始前工作区干净。
+- `gh --version`：失败，本机未安装 GitHub CLI。
+- `gh auth status`：失败，本机未安装 GitHub CLI。
+- `git remote -v`：无输出，当前未配置 remote。
+- 环境变量检查：`GITHUB_TOKEN_MISSING`、`GH_TOKEN_MISSING`。
+- `git branch --show-current`：当前分支为 `main`。
+
+结果：
+
+- T20 未完成。当前缺少可用于创建 GitHub 仓库的本地工具或凭据，也没有用户提供的 remote URL。
+
+未完成边界：
+
+- 需要安装并登录 GitHub CLI，或由用户先创建 GitHub 仓库并提供 remote URL。
+- remote 配置完成后再执行 `git push -u origin main`。
+
+是否更新 TODO：是，记录阻塞原因，T20 保留在当前待办列表。
+
+是否更新 ARCHITECTURE：否，本轮未改变架构。
+
+提交哈希：无，T20 未完成。
+
+## 2026-05-30 T21 可执行软件打包调研与配置
+
+任务 ID：T21
+
+目标：
+
+- 选择可执行打包路线。
+- 加入打包脚本、资源配置和 exe 运行时路径适配。
+- 尝试生成 Windows x64 可执行文件。
+
+范围：
+
+- `.gitignore`
+- `package.json`
+- `package-lock.json`
+- `README.md`
+- `src/runtimePaths.js`
+- `src/config.js`
+- `src/server.js`
+- `src/ncmAuth.js`
+- `src/appearance.js`
+- `src/dashboardSettings.js`
+- `src/audioCache.js`
+- `docs/TODO.md`
+- `docs/ARCHITECTURE.md`
+- `docs/WORK_HISTORY.md`
+
+关键决策：
+
+- 使用 `@yao-pkg/pkg` 作为打包工具；`pkg` 当前版本为 `5.8.1`，`@yao-pkg/pkg` 当前版本为 `6.20.0`。
+- 新增 `runtimePaths`，源码运行时使用项目根目录；pkg 打包运行时使用 exe 所在目录作为 `.env` 和 `.cache` 的写入位置。
+- `public/` 和 `pic/` 优先读取 exe 同级外部目录；不存在时读取打包内置资源。
+- `dist/` 加入 `.gitignore`，不提交 exe 产物。
+
+验证命令和结果：
+
+- `npm view pkg version deprecated description`：返回 `5.8.1`。
+- `npm view @yao-pkg/pkg version deprecated description`：返回 `6.20.0`。
+- `npm install --save-dev @yao-pkg/pkg@^6.20.0`：完成，初始提示 3 个 moderate 漏洞。
+- `npm audit fix`：完成，锁文件兼容升级后移除 2 个包并更新 2 个包。
+- `npm audit --omit=dev`：通过，`found 0 vulnerabilities`。
+- `npm audit`：通过，`found 0 vulnerabilities`。
+- `node --check src\runtimePaths.js; node --check src\config.js; node --check src\server.js; node --check src\ncmAuth.js; node --check src\appearance.js; node --check src\dashboardSettings.js; node --check src\audioCache.js`：通过。
+- `node -e "const paths=require('./src/runtimePaths'); ..."`：通过，确认 `publicDir`、`picDir` 和 `envPath` 基础解析可用。
+- `git diff --check`：通过。
+- `npm run build:exe`：失败。首次因为 GitHub 下载预编译基础镜像证书校验失败，回退源码构建后缺少 `patch`。
+- `$env:NODE_OPTIONS='--use-system-ca'; npm run build:exe`：证书问题解决，但远端没有 `node18.20.8-win-x64` 缓存，回退源码构建后仍缺少 `patch`。
+- 尝试 `node20-win-x64` 和 `node24-win-x64`：未能在当前环境中生成 exe；超时后的残留 pkg 构建进程已停止。
+- `Get-Command patch` 和常见 Git for Windows `patch.exe` 路径检查：未找到 `patch`。
+
+未完成边界：
+
+- 当前机器未生成 `dist/bilibiliwith163.exe`，因此未完成 exe 启动验证。
+- 需要安装 `patch` 和必要编译工具，或在能下载 `@yao-pkg/pkg` 预编译基础镜像的环境中再次执行 `npm run build:exe`。
+- 打包工具链虽然已配置，但 exe 产物生成仍需在满足 `pkg` 基础镜像下载或本地源码构建依赖的环境中完成。
+
+是否更新 TODO：是，T21 改写为“完成可执行软件打包产物验证”，保留在待办列表。
+
+是否更新 ARCHITECTURE：是，新增运行路径和 exe 打包说明。
+
+提交哈希：待提交后补充。

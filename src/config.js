@@ -1,4 +1,4 @@
-const path = require("path");
+const paths = require("./runtimePaths");
 
 require("dotenv").config();
 
@@ -47,7 +47,7 @@ const config = {
   requestTimeoutMs: toNonNegativeInteger(process.env.REQUEST_TIMEOUT_MS, 12000),
   audioCacheMaxMb: toNonNegativeInteger(process.env.AUDIO_CACHE_MAX_MB, 512),
   audioCacheMaxFiles: toNonNegativeInteger(process.env.AUDIO_CACHE_MAX_FILES, 120),
-  publicDir: path.resolve(__dirname, "..", "public"),
+  publicDir: paths.publicDir,
 };
 
 module.exports = config;

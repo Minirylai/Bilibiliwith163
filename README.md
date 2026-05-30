@@ -167,6 +167,31 @@ console.log(request);
 npm start
 ```
 
+## 可执行文件打包
+
+项目可以用 `@yao-pkg/pkg` 打包为 Windows x64 可执行文件：
+
+```powershell
+npm run build:exe
+```
+
+输出路径：
+
+```text
+dist/bilibiliwith163.exe
+```
+
+运行 exe 时，把 `.env` 放在 exe 同级目录。运行期写入的 `.cache/`、网易云登录 Cookie 和房间号配置也会保存在 exe 同级目录，而不是写入打包快照内部。
+
+如果需要替换前端静态资源或壁纸，可以在 exe 同级目录放置 `public/` 或 `pic/`；存在外部目录时会优先读取外部目录，否则读取打包内置资源。
+
+如果 `pkg` 无法下载预编译 Node 基础镜像，会回退到本地源码构建；Windows 环境需要可用的 `patch` 命令和完整编译工具链。证书校验失败时可先尝试：
+
+```powershell
+$env:NODE_OPTIONS="--use-system-ca"
+npm run build:exe
+```
+
 ## 测试和调试
 
 语法检查示例：

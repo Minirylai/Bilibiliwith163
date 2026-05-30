@@ -1,7 +1,8 @@
 const fs = require("fs");
 const path = require("path");
+const paths = require("./runtimePaths");
 
-const storePath = path.resolve(__dirname, "..", ".cache", "dashboard.json");
+const storePath = paths.dashboardSettingsPath;
 const defaults = {
   wallpaper: "/pic/fu.png",
 };

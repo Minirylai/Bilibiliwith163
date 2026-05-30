@@ -5,8 +5,9 @@ const path = require("path");
 const { pipeline } = require("stream/promises");
 const { Readable } = require("stream");
 const config = require("./config");
+const paths = require("./runtimePaths");
 
-const cacheDir = path.resolve(__dirname, "..", ".cache", "audio");
+const cacheDir = paths.audioCacheDir;
 const registry = new Map();
 const downloads = new Map();
 

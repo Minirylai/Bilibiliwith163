@@ -58,6 +58,7 @@ docs/
 ├─ src/
 │  ├─ server.js           # HTTP + Socket.IO 入口
 │  ├─ index.js            # 第三方引用入口；无副作用导出解析/helper
+│  ├─ runtimePaths.js     # 源码运行和 exe 打包运行的路径解析
 │  ├─ config.js           # 环境变量配置
 │  ├─ bilibili.js         # B 站直播间连接和弹幕处理
 │  ├─ bilibiliHelpers.js  # B 站命令、弹幕、地址、Cookie 辅助解析
@@ -167,6 +168,17 @@ flowchart LR
    - `queue:state`
    - `appearance:state`
    - 当前 B 站连接状态
+
+## 运行路径和 exe 打包
+
+`src/runtimePaths.js` 统一管理源码运行和 exe 打包运行时的路径：
+
+- 源码运行时，运行根目录是项目根目录。
+- `pkg` 打包运行时，运行根目录是可执行文件所在目录。
+- `.env`、`.cache/`、外观配置、控制台设置和音频缓存始终写入运行根目录。
+- `public/` 和 `pic/` 优先读取运行根目录下的外部目录；不存在时回退到打包快照内的内置资源。
+
+`npm run build:exe` 使用 `@yao-pkg/pkg` 生成 Windows x64 可执行文件，输出目标为 `dist/bilibiliwith163.exe`。如果 `pkg` 无法下载预编译 Node 基础镜像，会尝试源码构建；Windows 源码构建需要 `patch` 命令和完整编译工具链。
 
 ## 弹幕点歌流程
 

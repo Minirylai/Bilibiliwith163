@@ -1,9 +1,9 @@
 const fs = require("fs");
-const path = require("path");
 const ncm = require("@neteasecloudmusicapienhanced/api");
 const config = require("./config");
+const paths = require("./runtimePaths");
 
-const envPath = path.resolve(__dirname, "..", ".env");
+const envPath = paths.envPath;
 const ignoredCookieAttributes = new Set([
   "domain",
   "expires",

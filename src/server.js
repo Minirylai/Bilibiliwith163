@@ -1,5 +1,4 @@
 const fs = require("fs");
-const path = require("path");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -12,6 +11,7 @@ const { connectBilibili, handleDanmaku } = require("./bilibili");
 const { resolveSong, searchSongs } = require("./ncmApi");
 const ncmAuth = require("./ncmAuth");
 const { cacheStats, cleanupCache, handleAudioRequest } = require("./audioCache");
+const paths = require("./runtimePaths");
 
 const app = express();
 const server = http.createServer(app);
@@ -19,8 +19,8 @@ const io = new Server(server);
 let bilibiliStatus = null;
 let bilibiliLive = null;
 let activeBilibiliSession = 0;
-const wallpaperDir = path.resolve(__dirname, "..", "pic");
-const envPath = path.resolve(__dirname, "..", ".env");
+const wallpaperDir = paths.picDir;
+const envPath = paths.envPath;
 
 app.use(express.json({ limit: "20mb" }));
 app.use(express.static(config.publicDir));

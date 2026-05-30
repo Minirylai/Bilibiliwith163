@@ -1,9 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 const bus = require("./eventBus");
+const paths = require("./runtimePaths");
 
-const storePath = path.resolve(__dirname, "..", ".cache", "appearance.json");
-const savedStorePath = path.resolve(__dirname, "..", ".cache", "appearance.saved.json");
+const storePath = paths.appearancePath;
+const savedStorePath = paths.savedAppearancePath;
 
 const defaults = {
   widgetWidth: 560,
