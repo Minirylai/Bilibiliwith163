@@ -39,6 +39,7 @@ docs/
 | `dotenv` | 读取 `.env` 配置 |
 | `mpv` / `ffplay` | 后端调用的本机音频播放器，推荐 `mpv` |
 | `7zip-bin` | 自动安装便携版 `mpv` 时解压 `.7z` 包 |
+| `@appthreat/caxa` | 简单 exe 打包路线，将项目和 Node 运行时打进自解压 exe |
 
 ## 目录结构
 
@@ -184,10 +185,25 @@ flowchart LR
 
 - 源码运行时，运行根目录是项目根目录。
 - `pkg` 打包运行时，运行根目录是可执行文件所在目录。
+- `caxa` 打包运行时，`scripts/caxa-entry.js` 会把启动工作目录写入 `BILIBILIWITH163_RUNTIME_ROOT`，运行根目录就是 exe 启动目录。
 - `.env`、`.cache/`、外观配置、控制台设置和音频缓存始终写入运行根目录。
 - `public/` 和 `pic/` 优先读取运行根目录下的外部目录；不存在时回退到打包快照内的内置资源。
 
-`npm run build:exe` 使用 `@yao-pkg/pkg` 生成 Windows x64 可执行文件，输出目标为 `dist/bilibiliwith163.exe`。如果 `pkg` 无法下载预编译 Node 基础镜像，会尝试源码构建；Windows 源码构建需要 `patch` 命令和完整编译工具链。
+推荐的简单打包命令是：
+
+```powershell
+npm run build:exe:caxa
+```
+
+该命令会创建 `dist/caxa-input/` 临时目录，只安装生产依赖，然后用 `@appthreat/caxa` 生成 `dist/bilibiliwith163-caxa.exe`。这种方式不编译 Node 源码，不需要 NASM，产物本质是“Node 运行时 + 项目文件”的自解压 exe。`@appthreat/caxa` 构建阶段要求 Node.js 22.15 或更高版本；当前本机验证生成的 exe 约 64.6 MB。
+
+保留的高级打包命令是：
+
+```powershell
+npm run build:exe
+```
+
+它使用 `@yao-pkg/pkg` 生成 Windows x64 可执行文件，输出目标为 `dist/bilibiliwith163.exe`。如果 `pkg` 无法下载预编译 Node 基础镜像，会尝试源码构建；Windows 源码构建需要 `patch`、`NASM` 和完整编译工具链。
 
 ## 弹幕点歌流程
 

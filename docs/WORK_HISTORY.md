@@ -756,3 +756,56 @@
 是否更新 ARCHITECTURE：是，补充后端本地播放模块、API、Socket 事件和 OBS 源职责变化。
 
 提交哈希：`9b802c1 feat: play audio through local backend`
+
+## 2026-05-30 T21 简单 exe 打包路线验证
+
+任务 ID：T21-CAXA-EXE-20260530
+
+目标：
+
+- 继续研究可执行软件打包。
+- 在 `pkg` 预编译镜像和源码构建路径不稳定时，验证更简单的 Windows exe 打包方式。
+- 生成可启动的 exe，并确认能读取启动目录 `.env`。
+
+范围：
+
+- `package.json`
+- `package-lock.json`
+- `scripts/build-caxa.mjs`
+- `scripts/caxa-entry.js`
+- `src/runtimePaths.js`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/TODO.md`
+- `docs/WORK_HISTORY.md`
+
+关键决策：
+
+- 保留 `@yao-pkg/pkg` 的 `npm run build:exe` 作为高级路线，但不继续把当前工作堵在 NASM/源码构建上。
+- 新增 `@appthreat/caxa` 和 `npm run build:exe:caxa`。`caxa` 不编译 Node 源码，而是把项目文件、生产依赖和 Node 运行时打成自解压 exe。
+- `@appthreat/caxa` 构建阶段要求 Node.js 22.15 或更高版本；本机 Node 24.14.0 可满足该构建要求。
+- 新增 `scripts/build-caxa.mjs`：先构造 `dist/caxa-input/`，只安装生产依赖，再生成 `dist/bilibiliwith163-caxa.exe`，避免把 `.env`、`.cache`、`.git` 和开发依赖打进运行包。
+- 新增 `scripts/caxa-entry.js`：启动时把 `process.cwd()` 写入 `BILIBILIWITH163_RUNTIME_ROOT`，让 caxa exe 的 `.env` 和 `.cache` 写入 exe 启动目录，而不是写入解压缓存目录。
+- `src/runtimePaths.js` 支持 `BILIBILIWITH163_RUNTIME_ROOT`，同时保持源码运行和 `pkg` 运行逻辑兼容。
+
+验证命令和结果：
+
+- `npm view @appthreat/caxa version deprecated description license`：返回 `3.0.1`、MIT、未标记 deprecated。
+- `npm view caxa version deprecated description license`：同版本但原包已标记 deprecated，因此选择 `@appthreat/caxa`。
+- `node -v`：`v24.14.0`，满足 `@appthreat/caxa` 构建阶段 Node.js 22.15+ 要求。
+- `node --check scripts\build-caxa.mjs; node --check scripts\caxa-entry.js; node --check src\runtimePaths.js`：通过。
+- `npm run build:exe:caxa`：通过，生成 `dist\bilibiliwith163-caxa.exe`。
+- 独立目录 `dist\caxa-smoke` 写入 `.env` 后启动 exe，验证 `GET /api/player`、`GET /dashboard.html`、`GET /api/state`：通过。
+- 生成的 exe 大小约 64.58 MB。
+
+未完成边界：
+
+- `dist/` 仍按 `.gitignore` 不提交，Git 只提交打包脚本和文档。
+- 本轮未整理正式 Release zip；后续应把 exe、`.env.example`、运行说明放进发布包。
+- 未验证外部机器运行、Windows Defender 误报、签名或图标。
+
+是否更新 TODO：是，T21 从“pkg 打包产物验证阻塞”改为“完善可执行软件发布包”。
+
+是否更新 ARCHITECTURE：是，补充 caxa 打包路线和运行根目录逻辑。
+
+提交哈希：待提交后补充。

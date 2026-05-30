@@ -15,6 +15,7 @@
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "build:exe": "pkg src/server.js --targets node24-win-x64 --output dist/bilibiliwith163.exe",
+    "build:exe:caxa": "node scripts/build-caxa.mjs",
     "test": "node test/api-smoke.js",
     "debug:bili": "node scripts/watch-bilibili.js"
   },
@@ -37,6 +38,7 @@
     "ws": "^8.20.1"
   },
   "devDependencies": {
+    "@appthreat/caxa": "^3.0.1",
     "@yao-pkg/pkg": "^6.20.0"
   },
   "pkg": {
