@@ -592,3 +592,49 @@
 是否更新 ARCHITECTURE：是，补充缓存未完成时的远端流式代理行为。
 
 提交哈希：`8076f25 fix: stream audio on cache miss`
+
+## 2026-05-30 音频缓存命名、复用和退出回收
+
+任务 ID：AUDIO-CACHE-LIFECYCLE-20260530
+
+目标：
+
+- 缓存完整下载后，`/api/audio/:requestId` 优先读取本地缓存。
+- 缓存文件名具备实际意义，方便人工识别。
+- 同一首歌避免重复缓存。
+- 歌曲退出当前播放和候选队列后自动释放缓存并回收文件。
+
+范围：
+
+- `src/audioCache.js`
+- `src/queue.js`
+- `docs/ARCHITECTURE.md`
+- `docs/TODO.md`
+- `docs/WORK_HISTORY.md`
+
+关键决策：
+
+- 缓存 key 使用歌曲 ID、音质和播放格式生成，多个 requestId 指向同一首歌时共享同一个缓存文件。
+- 缓存文件名使用 `歌曲ID - 歌名 - 歌手 [音质].扩展名`，并清理 Windows 非法文件名字符。
+- 缓存下载锁按缓存 key 管理，避免同歌并发重复下载。
+- `queue.nextSong()`、`queue.clearQueue()`、`queue.removeQueuedSong()` 和 `queue.resetPlayback()` 会释放离开当前/候选歌单的歌曲缓存引用。
+- 最后一个引用释放后延迟删除缓存文件和 `.tmp` 文件；如果 Windows 文件占用导致删除失败，会短期重试。
+- 大小/数量清理会跳过当前播放、候选队列和正在下载的缓存文件。
+
+验证命令和结果：
+
+- `node --check src\audioCache.js; node --check src\queue.js; node --check src\server.js`：通过。
+- 本地 Node 行为脚本：同一首歌两个 requestId 只生成一个包含歌名/歌手的缓存文件：通过。
+- 本地 Node 行为脚本：远端关闭后 `/api/audio/:requestId` 仍能从完整本地缓存返回音频：通过。
+- 本地 Node 行为脚本：释放一个引用时缓存保留，释放最后一个引用后缓存文件自动删除：通过。
+
+未完成边界：
+
+- 旧版本遗留的 UUID 命名缓存文件不会自动迁移为新命名；后续可通过 `/api/cache/cleanup` 或手动删除 `.cache/audio` 清掉旧文件。
+- `audioCache.download()` 仍未加 AbortController 超时，T11 继续跟进远端长时间无响应和客户端中断边界。
+
+是否更新 TODO：是，补充缓存命名、复用和退出回收已实现能力，并保留 T11 超时边界。
+
+是否更新 ARCHITECTURE：是，补充缓存文件命名、复用、引用释放和回收逻辑。
+
+提交哈希：待提交后补充。

@@ -1,6 +1,6 @@
 const bus = require("./eventBus");
 const config = require("./config");
-const { createRequestId, registerSong } = require("./audioCache");
+const { createRequestId, registerSong, releaseSong } = require("./audioCache");
 
 const queue = [];
 const history = [];
@@ -123,9 +123,11 @@ function addSong(song, requester, keyword) {
 }
 
 function nextSong(reason = "ended") {
-  recordHistory(current, reason);
+  const previous = current;
+  recordHistory(previous, reason);
 
   current = queue.shift() || null;
+  releaseSong(previous);
   if (current) {
     bus.emit("player:play", current);
   } else {
@@ -141,6 +143,7 @@ function skipSong(reason = "skipped") {
 }
 
 function clearQueue() {
+  queue.forEach(releaseSong);
   queue.length = 0;
   emitState();
 }
@@ -150,15 +153,19 @@ function removeQueuedSong(requestId) {
   if (index === -1) return null;
 
   const [removed] = queue.splice(index, 1);
+  releaseSong(removed);
   emitState();
   return removed;
 }
 
 function resetPlayback() {
-  recordHistory(current, "reset");
+  const previous = current;
+  const queued = queue.splice(0);
+  recordHistory(previous, "reset");
 
   current = null;
-  queue.length = 0;
+  releaseSong(previous);
+  queued.forEach(releaseSong);
   bus.emit("player:idle");
   emitState();
 }

@@ -112,7 +112,7 @@ remote: origin https://github.com/Minirylai/Bilibiliwith163.git
 | 网易云搜索与解析 | 弹幕点歌、`GET /api/search`、`POST /api/request` | `src/ncmApi.js`、`src/ncmAuth.js` | 使用网易云增强 API 搜索、检查可播性并获取播放地址；手动点歌 API 已存在，但控制台没有对应 UI。 |
 | 网易云扫码登录 | 控制台网易云登录区、`/api/ncm/login/*` | `src/ncmAuth.js`、`src/server.js`、`public/dashboard.js` | 生成二维码、轮询扫码状态、保存或清除 `NCM_COOKIE`；会员歌曲仍取决于账号权限和接口返回。 |
 | 队列与播放状态 | `GET /api/state`、`POST /api/next`、`POST /api/skip`、`POST /api/clear`、`POST /api/reset`、`POST /api/queue/:requestId/remove` | `src/queue.js`、`src/eventBus.js`、`src/server.js` | 维护当前播放、候选队列和历史记录，并通过 Socket.IO 推送 `queue:state`、`player:play`、`player:idle`。 |
-| 音频缓存与播放代理 | `GET /api/audio/:requestId`、`GET /api/cache`、`POST /api/cache/cleanup` | `src/audioCache.js`、`src/queue.js`、`src/server.js` | 为每次点歌生成本地播放代理地址，预热 `.cache/audio`，支持 HTTP Range 和缓存清理。 |
+| 音频缓存与播放代理 | `GET /api/audio/:requestId`、`GET /api/cache`、`POST /api/cache/cleanup` | `src/audioCache.js`、`src/queue.js`、`src/server.js` | 为每次点歌生成本地播放代理地址，按歌曲生成可读缓存文件名，同歌复用缓存，支持 HTTP Range、缓存清理和退出歌单后的引用释放回收。 |
 | OBS / 直播姬浏览器源 | `/` | `public/index.html`、`public/shared.js`、`public/app.js`、`public/style.css` | 接收实时队列和播放事件，控制 `<audio>`，展示封面、标题、歌手、点歌来源、进度条、候选队列和播报栏。 |
 | OBS 外观配置 | 控制台编辑器、`/api/appearance*` | `src/appearance.js`、`public/shared.js`、`public/dashboard.js`、`public/app.js`、`public/style.css` | 可调整尺寸、毛玻璃、字号、字体、颜色和播放器/候选框/播报栏圆角；当前配置与保存方案分别落盘到 `.cache/appearance.json` 和 `.cache/appearance.saved.json`。 |
 | 控制台监控与控制 | `/dashboard.html` | `public/dashboard.html`、`public/shared.js`、`public/dashboard.js`、`src/server.js` | 展示当前播放、弹幕/请求日志、队列、房间状态，支持切歌、清空、停止、切房、网易云登录和外观编辑。 |
@@ -263,11 +263,14 @@ flowchart LR
 `src/audioCache.js` 负责：
 
 - 为每首歌创建 `requestId`
-- 根据播放格式生成缓存文件名
+- 根据歌曲 ID、歌名、歌手和音质生成可读缓存文件名
+- 对同一首歌的多个 `requestId` 复用同一个缓存文件，避免重复缓存
 - 下载远端音频到 `.cache/audio`
 - 支持 HTTP Range 请求
 - 按大小和文件数清理旧缓存
 - 缓存文件尚未完成时，先代理远端音频流给 OBS 播放，同时后台缓存继续预热
+- 当前播放或候选队列引用的缓存不会被大小清理删除
+- 歌曲从当前播放和候选队列退出后释放缓存引用；最后一个引用释放后自动删除对应缓存文件和 `.tmp` 文件
 
 OBS 源不直接播放网易云外链，而是播放：
 
