@@ -202,7 +202,7 @@
 
 是否更新 ARCHITECTURE：是，补充共享前端工具、B 站 helper、冷却提交时机和队列上限语义。
 
-提交哈希：待提交后补充。
+提交哈希：`c9fd292 refactor: share request helpers`
 
 ## 2026-05-30 T16 开源前基线收口
 
@@ -229,7 +229,7 @@
 - 同 T03/T04/T05 验证结果。
 - `git diff --check`：待提交前执行。
 
-提交哈希：待提交后补充。
+提交哈希：`c9fd292 refactor: share request helpers`
 
 ## 2026-05-30 GitHub 开源前规划
 
