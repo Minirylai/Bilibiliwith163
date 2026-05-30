@@ -129,7 +129,7 @@ REQUEST_COMMANDS=点歌,点播,网易云
 | `AUDIO_CACHE_MAX_MB` | `512` | 音频缓存大小上限 |
 | `AUDIO_CACHE_MAX_FILES` | `120` | 音频缓存文件数上限 |
 
-完整配置以 `.env.example` 和 `docs/ARCHITECTURE.md` 为准。
+完整配置以 `.env.example` 为准。
 
 ## HTTP 接口
 
@@ -159,7 +159,7 @@ REQUEST_COMMANDS=点歌,点播,网易云
 | `POST` | `/api/bilibili/room` | 切换房间 |
 | `POST` | `/api/ncm/login/qr` | 创建网易云二维码登录 |
 
-更多接口见 `docs/ARCHITECTURE.md`。
+接口返回结构可能随版本微调，第三方程序建议优先使用无副作用导出入口或上述稳定控制接口。
 
 ## 第三方引用
 
@@ -271,12 +271,9 @@ npm run debug:bili
 - `.env.example` 只应保留占位值。
 - 开源前建议执行凭据扫描，确认历史提交中没有真实 Cookie。
 
-## 文档
+## 开源边界
 
-- [文档入口](docs/README.md)
-- [项目架构](docs/ARCHITECTURE.md)
-- [待办清单](docs/TODO.md)
-- [工作记录](docs/WORK_HISTORY.md)
+公开仓库只保留运行、构建和二次开发所需内容。个人设计记录、任务拆解、工作历史和内部维护文档不随 GitHub 当前分支发布；如需了解公开能力，以本 README、`.env.example`、`package.json` 导出字段和源码为准。
 
 ## License
 

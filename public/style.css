@@ -515,10 +515,34 @@ button:hover {
   font-size: var(--status-font-size);
   font-family: var(--status-font-family);
   font-weight: 800;
+  opacity: 0;
+  transform: translateY(6px);
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease;
+  pointer-events: none;
 }
 
 .player-status[hidden] {
   display: none;
+}
+
+.player-status.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.player-status.is-hiding {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+.player-status.is-ok {
+  color: #d9ffd8;
+}
+
+.player-status.is-bad {
+  color: #ffd0ca;
 }
 
 .dashboard {

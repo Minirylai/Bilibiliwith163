@@ -45,6 +45,8 @@ let latestPlayerState = { status: "idle", paused: false, position: 0, duration: 
 let trackTextMotionFrame = 0;
 let queueMotionFrame = 0;
 let queueItemMotionFrame = 0;
+let statusTimer = 0;
+let statusFadeTimer = 0;
 
 function applyAppearance(appearance = {}) {
   setPxVariable(rootStyle, "--widget-width", appearance.widgetWidth, 560);
@@ -86,9 +88,43 @@ function applyAppearance(appearance = {}) {
   });
 }
 
-function showStatus(message) {
-  statusText.hidden = !message;
-  statusText.textContent = message || "";
+function hideStatus({ immediate = false } = {}) {
+  clearTimeout(statusTimer);
+  clearTimeout(statusFadeTimer);
+  statusTimer = 0;
+  statusFadeTimer = 0;
+  if (immediate) {
+    statusText.hidden = true;
+    statusText.textContent = "";
+    statusText.classList.remove("is-visible", "is-hiding", "is-ok", "is-bad");
+    return;
+  }
+  if (statusText.hidden) return;
+  statusText.classList.remove("is-visible");
+  statusText.classList.add("is-hiding");
+  statusFadeTimer = setTimeout(() => {
+    statusText.hidden = true;
+    statusText.textContent = "";
+    statusText.classList.remove("is-hiding", "is-ok", "is-bad");
+  }, 260);
+}
+
+function showStatus(message, tone = "info") {
+  if (!message) {
+    hideStatus();
+    return;
+  }
+  clearTimeout(statusTimer);
+  clearTimeout(statusFadeTimer);
+  statusText.textContent = message;
+  statusText.hidden = false;
+  statusText.classList.remove("is-hiding", "is-ok", "is-bad");
+  if (tone === "ok") statusText.classList.add("is-ok");
+  if (tone === "bad") statusText.classList.add("is-bad");
+  requestAnimationFrame(() => {
+    statusText.classList.add("is-visible");
+  });
+  statusTimer = setTimeout(() => hideStatus(), 2600);
 }
 
 function formatTime(seconds) {
@@ -254,17 +290,8 @@ function renderSong(song) {
 }
 
 function renderBilibiliStatus(status) {
-  if (status.lastError) {
-    showStatus(`${text.bilibiliError}\uff1a${status.lastError}`);
-    return;
-  }
-
-  if (status.liveStatus !== 1) {
-    showStatus(text.roomOffline);
-    return;
-  }
-
-  showStatus("");
+  // OBS 播报栏只显示短时点歌结果，避免直播间状态心跳导致闪烁。
+  void status;
 }
 
 function updatePlayButton() {
@@ -289,14 +316,9 @@ function renderPlayerState(player = {}) {
   updatePlayButton();
 
   if (latestPlayerState.status === "error") {
-    showStatus(latestPlayerState.message || text.playerFailed);
+    showStatus(latestPlayerState.message || text.playerFailed, "bad");
     return;
   }
-  if (latestPlayerState.status === "paused") {
-    showStatus(text.paused);
-    return;
-  }
-  showStatus("");
 }
 
 async function postJson(url) {
@@ -311,7 +333,7 @@ async function postJson(url) {
 
 togglePlayButton.addEventListener("click", async () => {
   if (!latestState?.current) return;
-  await postJson("/api/player/toggle").catch(() => showStatus(text.playerFailed));
+  await postJson("/api/player/toggle").catch(() => showStatus(text.playerFailed, "bad"));
 });
 
 nextSongButton.addEventListener("click", async () => {
@@ -319,7 +341,7 @@ nextSongButton.addEventListener("click", async () => {
   try {
     await postJson("/api/next");
   } catch {
-    showStatus(text.nextFailed);
+    showStatus(text.nextFailed, "bad");
   } finally {
     nextSongButton.disabled = false;
   }
@@ -336,7 +358,7 @@ queueList.addEventListener("click", async (event) => {
   try {
     await postJson(`/api/queue/${encodeURIComponent(requestId)}/remove`);
   } catch {
-    showStatus(text.removeFailed);
+    showStatus(text.removeFailed, "bad");
     button.disabled = false;
   }
 });
@@ -365,13 +387,18 @@ socket.on("player:state", renderPlayerState);
 socket.on("player:idle", () => {
   latestPlayerState = { status: "idle", paused: false, position: 0, duration: 0 };
   renderSong(null);
-  showStatus("");
 });
 
 socket.on("bilibili:status", renderBilibiliStatus);
 socket.on("appearance:state", applyAppearance);
-socket.on("request:accepted", (item) => showStatus(`${text.queued}\uff1a${item.name}`));
-socket.on("request:rejected", (event) => showStatus(event.reason || text.requestFailed));
+socket.on("request:accepted", (item) => {
+  const requester = item.requester?.name || text.viewer;
+  showStatus(`${requester} 点歌成功：${item.name}`, "ok");
+});
+socket.on("request:rejected", (event) => {
+  const requester = event.user?.name || text.viewer;
+  showStatus(`${requester} 点歌失败，原因：${event.reason || text.requestFailed}`, "bad");
+});
 
 window.addEventListener("resize", () => {
   refreshTrackTextMotion();

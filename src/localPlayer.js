@@ -15,8 +15,10 @@ let suppressExitToken = 0;
 let progressTimer = 0;
 let progressPolling = false;
 let mpvIpc = null;
+let mpvIpcReady = null;
 let fallbackStartedAt = 0;
 let stderrTail = "";
+let shutdownHandlersBound = false;
 
 const state = {
   available: false,
@@ -269,21 +271,89 @@ function clearProgressTimer() {
   }
 }
 
-function stopProcess({ suppressExit = true } = {}) {
-  clearProgressTimer();
-  mpvIpc?.close();
-  mpvIpc = null;
+function processIsRunning(child) {
+  return child && child.exitCode === null && child.signalCode === null;
+}
 
-  if (!activeProcess) return;
-  if (suppressExit) suppressExitToken = activeToken;
-  const child = activeProcess;
-  activeProcess = null;
-  child.removeAllListeners("error");
+function waitForProcessExit(child, timeoutMs = 1200) {
+  if (!processIsRunning(child)) return Promise.resolve(true);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      child.removeListener("exit", onExit);
+      resolve(false);
+    }, timeoutMs);
+    function onExit() {
+      clearTimeout(timer);
+      resolve(true);
+    }
+    child.once("exit", onExit);
+  });
+}
+
+function killProcessTreeSync(child) {
+  if (!processIsRunning(child)) return;
   try {
     child.kill();
   } catch {
     // The process may already have exited.
   }
+  if (process.platform === "win32" && child.pid) {
+    spawnSync("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], {
+      stdio: "ignore",
+      windowsHide: true,
+    });
+  }
+}
+
+async function sendMpvCommand(command, timeoutMs = 1200) {
+  if (!mpvIpc) throw new Error("mpv IPC is not connected");
+  const ready = mpvIpcReady ? await mpvIpcReady : false;
+  if (!ready) throw new Error("mpv IPC is unavailable");
+  return mpvIpc.send(command, timeoutMs);
+}
+
+async function stopProcess({ suppressExit = true } = {}) {
+  clearProgressTimer();
+  const ipc = mpvIpc;
+  const ipcReady = mpvIpcReady;
+  const child = activeProcess;
+  const token = activeToken;
+
+  mpvIpc = null;
+  mpvIpcReady = null;
+
+  if (suppressExit) suppressExitToken = token;
+  activeProcess = null;
+
+  if (!child) {
+    ipc?.close();
+    return;
+  }
+
+  if (ipc) {
+    const ready = ipcReady ? await ipcReady : false;
+    if (ready) {
+      await ipc.send(["quit"], 600).catch(() => {});
+      if (await waitForProcessExit(child, 800)) {
+        ipc.close();
+        return;
+      }
+    }
+  }
+
+  try {
+    child.kill();
+  } catch {
+    // The process may already have exited.
+  }
+  if (!(await waitForProcessExit(child, 1200)) && process.platform === "win32" && child.pid) {
+    spawnSync("taskkill.exe", ["/PID", String(child.pid), "/T", "/F"], {
+      stdio: "ignore",
+      windowsHide: true,
+    });
+    await waitForProcessExit(child, 1200);
+  }
+  ipc?.close();
 }
 
 function spawnMpv(executable, target, token, volume) {
@@ -303,12 +373,16 @@ function spawnMpv(executable, target, token, volume) {
     windowsHide: true,
   });
   const ipc = createMpvIpc(pipePath);
-  ipc.connect().catch((error) => {
-    bus.emit("log", {
-      level: "warn",
-      message: `mpv IPC unavailable: ${error.message}`,
-    });
-  });
+  mpvIpcReady = ipc.connect().then(
+    () => true,
+    (error) => {
+      bus.emit("log", {
+        level: "warn",
+        message: `mpv IPC unavailable: ${error.message}`,
+      });
+      return false;
+    },
+  );
   mpvIpc = ipc;
   return child;
 }
@@ -406,7 +480,7 @@ async function play(song) {
     return getState();
   }
 
-  stopProcess({ suppressExit: true });
+  await stopProcess({ suppressExit: true });
   activeToken += 1;
   const token = activeToken;
   stderrTail = "";
@@ -463,6 +537,7 @@ async function play(song) {
       clearProgressTimer();
       mpvIpc?.close();
       mpvIpc = null;
+      mpvIpcReady = null;
       if (suppressed) return;
 
       const reason = code === 0 ? "ended" : "player-exit";
@@ -508,7 +583,7 @@ async function play(song) {
 async function pause() {
   if (!activeProcess || state.status === "idle") return getState();
   if (state.backend === "mpv" && mpvIpc) {
-    await mpvIpc.send(["set_property", "pause", true]).catch(() => {});
+    await sendMpvCommand(["set_property", "pause", true]);
   } else if (state.backend === "ffplay") {
     try {
       activeProcess.stdin?.write("p");
@@ -526,7 +601,7 @@ async function pause() {
 async function resume() {
   if (!activeProcess || state.status === "idle") return getState();
   if (state.backend === "mpv" && mpvIpc) {
-    await mpvIpc.send(["set_property", "pause", false]).catch(() => {});
+    await sendMpvCommand(["set_property", "pause", false]);
   } else if (state.backend === "ffplay") {
     try {
       activeProcess.stdin?.write("p");
@@ -547,7 +622,7 @@ async function togglePause() {
 }
 
 async function stop() {
-  stopProcess({ suppressExit: true });
+  await stopProcess({ suppressExit: true });
   setState({
     current: null,
     duration: 0,
@@ -560,9 +635,24 @@ async function stop() {
   return getState();
 }
 
+function bindShutdownHandlers() {
+  if (shutdownHandlersBound) return;
+  shutdownHandlersBound = true;
+  process.once("exit", () => {
+    killProcessTreeSync(activeProcess);
+  });
+  for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
+    process.once(signal, () => {
+      killProcessTreeSync(activeProcess);
+      process.exit(signal === "SIGINT" ? 130 : 143);
+    });
+  }
+}
+
 function bind(options = {}) {
   baseUrl = options.baseUrl || "";
   refreshAvailability();
+  bindShutdownHandlers();
 
   bus.on("player:play", (song) => {
     play(song).catch((error) => {
