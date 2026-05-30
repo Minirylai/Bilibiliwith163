@@ -47,33 +47,116 @@ function setStatus(next) {
   Object.assign(status, next);
 }
 
-async function fetchLatestMpvAsset() {
-  const response = await fetch(releaseApiUrl, {
-    headers: {
-      "User-Agent": "Bilibiliwith163",
-    },
+function runCapture(command, args, options = {}) {
+  return new Promise((resolve, reject) => {
+    const child = spawn(command, args, {
+      cwd: options.cwd,
+      stdio: ["ignore", "pipe", "pipe"],
+      windowsHide: true,
+    });
+    const stdout = [];
+    const stderr = [];
+
+    child.stdout.on("data", (chunk) => stdout.push(chunk));
+    child.stderr.on("data", (chunk) => stderr.push(chunk));
+    child.once("error", reject);
+    child.once("exit", (code) => {
+      const output = Buffer.concat(stdout).toString("utf8");
+      const errorOutput = Buffer.concat(stderr).toString("utf8").trim();
+      if (code === 0) {
+        resolve(output);
+        return;
+      }
+      reject(new Error(errorOutput || `${command} exited with code ${code}`));
+    });
   });
-  if (!response.ok) {
-    throw new Error(`读取 mpv 发布信息失败：${response.status} ${response.statusText}`);
+}
+
+async function fetchJsonWithCurl(url) {
+  const output = await runCapture("curl.exe", [
+    "-fsSL",
+    "--connect-timeout",
+    "20",
+    "--max-time",
+    "60",
+    "-H",
+    "User-Agent: Bilibiliwith163",
+    url,
+  ]);
+  return JSON.parse(output);
+}
+
+async function fetchLatestMpvAsset() {
+  let release;
+  try {
+    const response = await fetch(releaseApiUrl, {
+      headers: {
+        "User-Agent": "Bilibiliwith163",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`读取 mpv 发布信息失败：${response.status} ${response.statusText}`);
+    }
+    release = await response.json();
+  } catch (error) {
+    if (process.platform !== "win32") {
+      throw error;
+    }
+    setStatus({
+      message: "Node 下载链路证书校验失败，正在改用 Windows curl 下载...",
+    });
+    release = await fetchJsonWithCurl(releaseApiUrl);
   }
 
-  const release = await response.json();
   const assets = Array.isArray(release.assets) ? release.assets : [];
-  const asset = assets.find((item) => /^mpv-x86_64-v3-.*\.7z$/i.test(item.name));
+  const asset =
+    assets.find((item) => /^mpv-x86_64-v3-.*\.7z$/i.test(item.name)) ||
+    assets.find((item) => /^mpv-x86_64-.*\.7z$/i.test(item.name));
   if (!asset?.browser_download_url) {
     throw new Error("未找到适合 Windows x64 的 mpv 发布包");
   }
   return asset;
 }
 
+async function downloadFileWithCurl(url, targetPath) {
+  await runCapture("curl.exe", [
+    "-fL",
+    "--retry",
+    "2",
+    "--connect-timeout",
+    "20",
+    "--max-time",
+    "600",
+    "-H",
+    "User-Agent: Bilibiliwith163",
+    "-o",
+    targetPath,
+    url,
+  ]);
+  setStatus({ progress: 92 });
+}
+
 async function downloadFile(url, targetPath) {
-  const response = await fetch(url, {
-    headers: {
-      "User-Agent": "Bilibiliwith163",
-    },
-  });
-  if (!response.ok || !response.body) {
-    throw new Error(`下载 mpv 失败：${response.status} ${response.statusText}`);
+  let response;
+  try {
+    response = await fetch(url, {
+      headers: {
+        "User-Agent": "Bilibiliwith163",
+      },
+    });
+    if (!response.ok || !response.body) {
+      throw new Error(`下载 mpv 失败：${response.status} ${response.statusText}`);
+    }
+  } catch (error) {
+    if (process.platform !== "win32") {
+      throw error;
+    }
+    setStatus({
+      message: "Node 下载 mpv 失败，正在改用 Windows curl 下载...",
+      progress: 8,
+    });
+    await downloadFileWithCurl(url, targetPath);
+    return;
   }
 
   const total = Number(response.headers.get("content-length")) || 0;

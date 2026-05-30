@@ -3207,3 +3207,187 @@ input {
   padding: 0 14px;
   white-space: nowrap;
 }
+
+/* Final live-dashboard layout guard. Keep this at true EOF. */
+.dashboard [hidden] {
+  display: none !important;
+}
+
+.dashboard-shell {
+  width: min(1440px, calc(100vw - 48px)) !important;
+}
+
+.blog-hero {
+  min-height: 0 !important;
+}
+
+.hero-main,
+.hero-actions,
+.top-control-row,
+.ncm-login-compact,
+.ncm-quality-form,
+.dashboard-grid > .tool-panel,
+.current-track,
+.event-list li,
+.dashboard-queue-list li {
+  min-width: 0 !important;
+}
+
+.hero-actions {
+  max-width: min(520px, 100%) !important;
+}
+
+.dashboard-grid {
+  grid-template-columns: minmax(260px, 0.95fr) minmax(320px, 1.25fr) minmax(260px, 0.95fr) !important;
+  grid-auto-rows: minmax(284px, auto) !important;
+  align-items: stretch !important;
+}
+
+.dashboard-grid > .tool-panel {
+  height: auto !important;
+  min-height: 284px !important;
+  max-height: 420px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+}
+
+.current-panel {
+  gap: 10px !important;
+}
+
+.current-panel #dash-current {
+  min-height: 0 !important;
+  overflow: hidden !important;
+}
+
+.dashboard .current-track {
+  width: 100% !important;
+  grid-template-columns: 92px minmax(0, 1fr) !important;
+}
+
+.dashboard .current-track strong,
+.dashboard .current-track span,
+.dashboard .current-track small,
+.dashboard #player-state {
+  max-width: 100% !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+}
+
+.dashboard .event-list,
+.dashboard-queue-list {
+  flex: 1 1 auto !important;
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: auto !important;
+}
+
+.dashboard .event-list li,
+.dashboard-queue-list li {
+  align-items: flex-start !important;
+  line-height: 1.35 !important;
+  overflow-wrap: anywhere !important;
+  word-break: break-word !important;
+}
+
+.dashboard #player-state {
+  margin-top: auto !important;
+  line-height: 1.35 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+.dashboard #player-install {
+  width: fit-content !important;
+  max-width: 100% !important;
+}
+
+.top-control-row .ncm-login-compact,
+.ncm-login-compact {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 16px !important;
+  align-items: start !important;
+}
+
+.ncm-quality-form {
+  width: 100% !important;
+  grid-template-columns: minmax(180px, 1fr) minmax(180px, 1fr) minmax(140px, auto) !important;
+}
+
+.hero-button-row,
+.ncm-login-actions {
+  flex-wrap: wrap !important;
+}
+
+@media (max-width: 980px) {
+  .dashboard-shell {
+    width: min(100% - 32px, 720px) !important;
+  }
+
+  .blog-hero {
+    display: grid !important;
+    min-height: 0 !important;
+  }
+
+  .hero-actions {
+    max-width: none !important;
+  }
+
+  .top-control-row .ncm-login-compact,
+  .ncm-login-compact,
+  .ncm-quality-form,
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-grid {
+    grid-auto-rows: auto !important;
+  }
+
+  .dashboard-grid > .tool-panel {
+    min-height: 260px !important;
+    max-height: none !important;
+  }
+}
+
+@media (max-width: 640px) {
+  .dashboard-shell {
+    width: min(100% - 24px, 560px) !important;
+    padding: 14px 0 !important;
+  }
+
+  .blog-hero,
+  .top-control-row,
+  .dashboard .tool-panel {
+    padding: 20px !important;
+  }
+
+  .blog-hero h1 {
+    font-size: 34px !important;
+    line-height: 1.06 !important;
+  }
+
+  .hero-button-row,
+  .ncm-login-actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    width: 100% !important;
+  }
+
+  .hero-button-row > *,
+  .ncm-login-actions > * {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .dashboard .current-track {
+    grid-template-columns: 84px minmax(0, 1fr) !important;
+    gap: 14px !important;
+  }
+
+  .dashboard .current-track img {
+    width: 84px !important;
+    height: 84px !important;
+  }
+}

@@ -856,3 +856,43 @@
 是否更新 ARCHITECTURE：是，补充 `build:release` 发布包结构和输出路径。
 
 提交哈希：本提交 `build: add release package workflow`
+
+## 2026-05-30 控制台布局与播放器安装修复
+
+任务 ID：DASHBOARD-INSTALL-FIX-20260530
+
+目标：
+
+- 修复控制台在窄宽度和长日志/长歌曲信息下的内容重叠。
+- 修复便携版 `mpv` 安装时 Node 下载链路证书校验失败导致的安装失败。
+
+范围：
+
+- `src/playerInstaller.js`
+- `public/dashboard.html`
+- `public/style.css`
+- `docs/WORK_HISTORY.md`
+
+关键决策：
+
+- Windows 下 `fetch()` 访问 GitHub 失败时，改用系统 `curl.exe` 作为发布信息读取和文件下载兜底，复用 Windows 系统证书链。
+- 控制台三栏面板取消固定 236px 高度依赖，面板内容使用 flex 分配，日志和队列区域独立滚动。
+- 增加最终 `[hidden]` 规则，避免按钮 display 规则覆盖原生 hidden 行为，确保播放器已可用时隐藏“一键安装播放器”。
+
+验证命令和结果：
+
+- `node --check src\playerInstaller.js; node --check src\server.js; node --check public\dashboard.js; git diff --check`：通过。
+- 直接执行 `playerInstaller.installMpv()`：通过，已安装到 `.cache\player\mpv\mpv.exe`。
+- `GET /api/player`：返回 `available: true`、`backend: mpv`。
+- `POST /api/player/install`：已安装时返回 `status: ready` 和播放器可用状态。
+- 内置浏览器打开 `http://127.0.0.1:3897/dashboard.html`：窄屏下卡片重叠数为 0，安装按钮在播放器可用时 `display: none`。
+
+未完成边界：
+
+- 本轮验证了播放器安装和服务识别 `mpv`，未做真实点歌出声测试。
+
+是否更新 TODO：否，本轮是缺陷修复，不调整近期任务排序。
+
+是否更新 ARCHITECTURE：否，未改变整体架构。
+
+提交哈希：本提交 `fix: stabilize dashboard and player install`
