@@ -44,6 +44,7 @@ docs/
 .
 ├─ public/
 │  ├─ index.html          # OBS / 直播姬浏览器源页面
+│  ├─ shared.js           # OBS 源和控制台共享前端工具函数
 │  ├─ app.js              # OBS 点歌器前端逻辑
 │  ├─ dashboard.html      # 控制台页面
 │  ├─ dashboard.js        # 控制台前端逻辑
@@ -58,6 +59,7 @@ docs/
 │  ├─ server.js           # HTTP + Socket.IO 入口
 │  ├─ config.js           # 环境变量配置
 │  ├─ bilibili.js         # B 站直播间连接和弹幕处理
+│  ├─ bilibiliHelpers.js  # B 站命令、弹幕、地址、Cookie 辅助解析
 │  ├─ ncmApi.js           # 网易云搜索、可用性检查、播放地址
 │  ├─ ncmAuth.js          # 网易云二维码登录和 Cookie 持久化
 │  ├─ queue.js            # 当前播放、候选队列、历史记录
@@ -104,14 +106,14 @@ remote: none
 | --- | --- | --- | --- |
 | B 站房间连接 | 启动服务、`GET /api/bilibili/room` | `src/server.js`、`src/bilibili.js`、`src/config.js` | 启动时自动连接 `.env` 中的房间号，并向前端广播连接、心跳、最近弹幕和错误状态。 |
 | B 站房间切换 | 控制台房间表单、`POST /api/bilibili/room` | `src/server.js`、`src/bilibili.js` | 可运行时切房并写回 `.env`；当前没有自动重连，连接失败时存在内存状态先更新的风险。 |
-| 弹幕点歌识别 | 直播间 `DANMU_MSG` | `src/bilibili.js`、`src/songRequestParser.js`、`src/queue.js` | 支持 `REQUEST_COMMANDS` 配置的指令前缀，解析出关键词后进入冷却、搜索和入队流程。 |
+| 弹幕点歌识别 | 直播间 `DANMU_MSG` | `src/bilibili.js`、`src/bilibiliHelpers.js`、`src/songRequestParser.js`、`src/queue.js` | 支持 `REQUEST_COMMANDS` 配置的指令前缀，解析出关键词后进入冷却、搜索和入队流程。 |
 | 网易云搜索与解析 | 弹幕点歌、`GET /api/search`、`POST /api/request` | `src/ncmApi.js`、`src/ncmAuth.js` | 使用网易云增强 API 搜索、检查可播性并获取播放地址；手动点歌 API 已存在，但控制台没有对应 UI。 |
 | 网易云扫码登录 | 控制台网易云登录区、`/api/ncm/login/*` | `src/ncmAuth.js`、`src/server.js`、`public/dashboard.js` | 生成二维码、轮询扫码状态、保存或清除 `NCM_COOKIE`；会员歌曲仍取决于账号权限和接口返回。 |
 | 队列与播放状态 | `GET /api/state`、`POST /api/next`、`POST /api/skip`、`POST /api/clear`、`POST /api/reset`、`POST /api/queue/:requestId/remove` | `src/queue.js`、`src/eventBus.js`、`src/server.js` | 维护当前播放、候选队列和历史记录，并通过 Socket.IO 推送 `queue:state`、`player:play`、`player:idle`。 |
 | 音频缓存与播放代理 | `GET /api/audio/:requestId`、`GET /api/cache`、`POST /api/cache/cleanup` | `src/audioCache.js`、`src/queue.js`、`src/server.js` | 为每次点歌生成本地播放代理地址，预热 `.cache/audio`，支持 HTTP Range 和缓存清理。 |
-| OBS / 直播姬浏览器源 | `/` | `public/index.html`、`public/app.js`、`public/style.css` | 接收实时队列和播放事件，控制 `<audio>`，展示封面、标题、歌手、点歌来源、进度条、候选队列和播报栏。 |
-| OBS 外观配置 | 控制台编辑器、`/api/appearance*` | `src/appearance.js`、`public/dashboard.js`、`public/app.js`、`public/style.css` | 可调整尺寸、毛玻璃、字号、字体、颜色和播放器/候选框/播报栏圆角；当前配置与保存方案分别落盘到 `.cache/appearance.json` 和 `.cache/appearance.saved.json`。 |
-| 控制台监控与控制 | `/dashboard.html` | `public/dashboard.html`、`public/dashboard.js`、`src/server.js` | 展示当前播放、弹幕/请求日志、队列、房间状态，支持切歌、清空、停止、切房、网易云登录和外观编辑。 |
+| OBS / 直播姬浏览器源 | `/` | `public/index.html`、`public/shared.js`、`public/app.js`、`public/style.css` | 接收实时队列和播放事件，控制 `<audio>`，展示封面、标题、歌手、点歌来源、进度条、候选队列和播报栏。 |
+| OBS 外观配置 | 控制台编辑器、`/api/appearance*` | `src/appearance.js`、`public/shared.js`、`public/dashboard.js`、`public/app.js`、`public/style.css` | 可调整尺寸、毛玻璃、字号、字体、颜色和播放器/候选框/播报栏圆角；当前配置与保存方案分别落盘到 `.cache/appearance.json` 和 `.cache/appearance.saved.json`。 |
+| 控制台监控与控制 | `/dashboard.html` | `public/dashboard.html`、`public/shared.js`、`public/dashboard.js`、`src/server.js` | 展示当前播放、弹幕/请求日志、队列、房间状态，支持切歌、清空、停止、切房、网易云登录和外观编辑。 |
 | 控制台设置和壁纸能力 | `GET/POST /api/dashboard-settings`、`GET /api/wallpapers` | `src/dashboardSettings.js`、`src/server.js`、`public/dashboard.js`、`public/style.css` | 服务端保留设置和壁纸列表能力；当前前端主流程固定使用 `pic/fu.png`，播放器预览底图优先尝试 `pic/miku.png` 后回退 `pic/miku.jpg`。 |
 | 本地模拟和调试 | `POST /api/mock-danmaku`、`npm run debug:bili`、`npm test` | `src/server.js`、`scripts/watch-bilibili.js`、`test/api-smoke.js` | 支持模拟弹幕、单独监听 B 站弹幕，以及对网易云和 B 站外部 API 做冒烟检查。 |
 
@@ -126,8 +128,7 @@ remote: none
 - `public/style.css` 已有多段 `Final overrides` / `EOF override` 覆盖块，说明样式依赖末尾覆盖来修正前文规则，后续维护容易继续堆叠。该问题已在 `docs/TODO.md` 作为 P0 记录。
 - 外观默认值和字段处理同时存在于 `src/appearance.js`、`public/dashboard.js` 和 `public/app.js`，属于前后端 schema 重复；后续新增字段时需要同步三处。
 - `src/dashboardSettings.js`、`GET /api/dashboard-settings`、`GET /api/wallpapers` 和禁用的 `POST /api/wallpapers/upload` 仍保留，但当前控制台主流程固定壁纸，没有完整的壁纸选择或上传 UI。
-- `public/app.js` 和 `public/dashboard.js` 重复实现了 `escapeHtml`、字体 CSS 拼接、颜色转换和滚动测量等前端工具函数；在无构建流程的静态前端中可以接受，但继续扩展时建议抽出共享脚本或引入轻量构建。
-- `scripts/watch-bilibili.js` 与 `src/bilibili.js` 重复了 B 站命令、地址和 Cookie 辅助解析逻辑；作为独立调试脚本可保留，但如果协议适配继续变化，应同步维护。
+- 外观默认值和字段处理同时存在于 `src/appearance.js`、`public/dashboard.js` 和 `public/app.js`，属于前后端 schema 重复；后续新增字段时需要同步三处。
 - 手动点歌接口 `POST /api/request` 已存在，但控制台没有手动搜索/插入入口；目前更像调试或外部集成接口。
 
 ## 运行时组件
@@ -170,15 +171,16 @@ flowchart LR
 1. `bilibili-live-danmaku` 收到直播间消息。
 2. `src/bilibili.js` 过滤 `DANMU_MSG`，提取弹幕文本和用户信息。
 3. `src/songRequestParser.js` 判断弹幕是否以点歌指令开头。
-4. `src/queue.js` 检查用户点歌冷却、队列上限和重复歌曲。
+4. `src/queue.js` 先检查用户点歌冷却。
 5. `src/ncmApi.js` 调用网易云：
    - `cloudsearch` 搜索歌曲
    - `check_music` 检查可用性
    - `song_url_v1` 获取播放地址
 6. `src/queue.js` 创建队列项和 `requestId`。
 7. `src/audioCache.js` 注册播放地址并预热缓存。
-8. `eventBus` 发出 `request:accepted`、`queue:state`、`player:play`。
-9. OBS 源收到 Socket.IO 事件并播放。
+8. 成功入队后 `src/queue.js` 提交用户冷却记录。
+9. `eventBus` 发出 `request:accepted`、`queue:state`、`player:play`。
+10. OBS 源收到 Socket.IO 事件并播放。
 
 ## 队列和播放逻辑
 
@@ -193,12 +195,26 @@ flowchart LR
 
 - 队列为空时新增歌曲会立即成为 `current` 并触发 `player:play`。
 - 队列非空时新增歌曲进入候选队列。
+- `MAX_QUEUE_SIZE` 表示当前播放歌曲加候选队列的总量。
 - `nextSong()` 会把当前歌曲写入历史，然后播放下一首。
 - `skipSong()` 是 `nextSong()` 的别名。
 - `resetPlayback()` 停止当前播放并清空队列。
 - `removeQueuedSong()` 只移除候选队列中的歌曲。
 - `history` 内部最多保留 `MAX_HISTORY_ITEMS` 条记录；`publicState()` 仍只返回最近 20 条，保持前端兼容。
 - `canUserRequest()` 每次检查时会清理超过 `USER_COOLDOWN_TTL_MS` 的用户冷却记录；实际 TTL 不会小于 `MIN_REQUEST_INTERVAL_MS`。
+- `commitUserRequest()` 只在歌曲成功入队后调用；搜索失败、不可播、重复歌曲或队列满不会消耗用户冷却。
+
+## B 站辅助逻辑
+
+`src/bilibiliHelpers.js` 提供正式 B 站连接和调试脚本共享的基础解析：
+
+- `getBaseCommand()`：提取消息基础命令，例如 `DANMU_MSG`。
+- `danmakuFromMessage()`：从弹幕消息中提取文本、用户 ID 和用户名。
+- `hostToAddress()`：把 B 站 host 配置转换为 WebSocket 地址。
+- `cookieValue()`：从 Cookie 字符串读取指定键。
+- `clientBuvid()`：从 B 站 Cookie 容器中读取可用 buvid。
+
+`src/bilibili.js` 和 `scripts/watch-bilibili.js` 都应使用该 helper，避免协议适配时出现正式链路和调试链路不一致。
 
 ## 网易云登录逻辑
 
@@ -271,6 +287,16 @@ OBS 源不直接播放网易云外链，而是播放：
 - 自动滚动长标题、作者、点歌来源和队列
 - 应用外观配置 CSS 变量，包括尺寸、颜色、字体、毛玻璃和圆角
 
+`public/shared.js` 负责 OBS 源和控制台共享的基础前端工具：
+
+- `escapeHtml()`
+- `numberValue()`
+- `cssFont()`
+- `hexToRgb()`
+- `setPxVariable()`
+
+`public/index.html` 和 `public/dashboard.html` 都必须先加载 `/shared.js`，再加载各自页面脚本。
+
 ## REST API 概览
 
 | 方法 | 路径 | 用途 |
@@ -329,7 +355,7 @@ OBS 源不直接播放网易云外链，而是播放：
 | `BILI_ROOM_ID` | `1` | B 站直播间号 |
 | `BILI_COOKIE` | 空 | B 站 Cookie |
 | `REQUEST_COMMANDS` | `点歌,点播,网易云` | 点歌指令 |
-| `MAX_QUEUE_SIZE` | `30` | 队列上限 |
+| `MAX_QUEUE_SIZE` | `30` | 总点歌池上限，包含当前播放和候选队列 |
 | `MAX_HISTORY_ITEMS` | `100` | 内存中最近播放历史最大保留条数，`0` 表示不保留历史 |
 | `MAX_SEARCH_RESULTS` | `8` | 网易云搜索结果数 |
 | `MIN_REQUEST_INTERVAL_MS` | `8000` | 同用户点歌冷却 |

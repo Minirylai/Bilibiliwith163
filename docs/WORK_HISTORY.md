@@ -112,3 +112,166 @@
 是否更新 ARCHITECTURE：是，补充历史上限、冷却 TTL 和新增环境变量。
 
 提交哈希：`0df3e6b fix: cap queue runtime state`
+
+## 2026-05-25 T03/T04/T05 三项高优先级维护
+
+任务 ID：T03、T04、T05
+
+目标：
+
+- T03：修复点歌冷却扣减时机，并明确 `MAX_QUEUE_SIZE` 队列上限语义。
+- T04：抽取 OBS 源和控制台重复的前端工具函数。
+- T05：共享正式 B 站连接模块和调试脚本中的 B 站基础解析辅助逻辑。
+
+范围：
+
+- `src/queue.js`
+- `src/bilibili.js`
+- `src/bilibiliHelpers.js`
+- `scripts/watch-bilibili.js`
+- `public/shared.js`
+- `public/app.js`
+- `public/dashboard.js`
+- `public/index.html`
+- `public/dashboard.html`
+- `docs/TODO.md`
+- `docs/ARCHITECTURE.md`
+
+预计修改文件：
+
+- 后端队列模块拆分冷却检查和提交，并让队列上限明确按“总点歌池”计算。
+- 新增前端共享脚本，迁移重复 HTML 转义、字体 CSS、颜色转换和数值兜底工具。
+- 新增 B 站 helper，正式模块和调试脚本共用命令解析、弹幕提取、地址转换、Cookie 读取。
+
+风险点：
+
+- 冷却提交时机变化不能让失败请求进入冷却，也不能让成功请求绕过冷却。
+- `MAX_QUEUE_SIZE` 语义变化会让当前播放歌曲计入总数，需要同步文档。
+- 新增前端共享脚本必须先于页面业务脚本加载。
+- B 站 helper 需要同时兼容 CommonJS 正式代码和调试脚本。
+
+验收标准：
+
+- 冷却只在歌曲准备入队后提交。
+- `MAX_QUEUE_SIZE` 表示当前播放 + 候选队列总量。
+- `public/app.js` 和 `public/dashboard.js` 不再各自维护重复的基础工具函数。
+- `scripts/watch-bilibili.js` 和 `src/bilibili.js` 共用 B 站 helper。
+
+当前 Git 状态：
+
+- 开始前工作区干净，HEAD 为 `a0489f0 docs: record T02 completion commit`。
+- 已创建本地备份 tag：`backup-before-t03-t04-t05-20260525`。
+
+实际修改文件：
+
+- `src/queue.js`
+- `src/bilibili.js`
+- `src/bilibiliHelpers.js`
+- `scripts/watch-bilibili.js`
+- `public/shared.js`
+- `public/app.js`
+- `public/dashboard.js`
+- `public/index.html`
+- `public/dashboard.html`
+- `docs/TODO.md`
+- `docs/ARCHITECTURE.md`
+- `docs/WORK_HISTORY.md`
+
+关键决策：
+
+- `queue.canUserRequest()` 只做冷却检查，不再写入冷却时间。
+- 新增 `queue.commitUserRequest()`，只在歌曲成功入队后提交用户冷却。
+- `queue.addSong()` 使用当前播放加候选队列的总数判断 `MAX_QUEUE_SIZE`。
+- `public/shared.js` 承载 OBS 源和控制台共用的 HTML 转义、字体、颜色和数值工具。
+- `src/bilibiliHelpers.js` 承载正式连接和调试脚本共用的 B 站消息、地址和 Cookie 辅助解析。
+
+验证命令和结果：
+
+- `node --check src\server.js; node --check src\bilibili.js; node --check src\queue.js; node --check src\bilibiliHelpers.js; node --check scripts\watch-bilibili.js; node --check public\shared.js; node --check public\app.js; node --check public\dashboard.js`：通过。
+- 本地 Node 行为脚本：验证 `MAX_QUEUE_SIZE=1` 时当前播放占用总点歌池，第二首会返回 `Queue is full`：通过。
+- 本地 Node 行为脚本：验证 `canUserRequest()` 不提交冷却，`commitUserRequest()` 后才进入冷却：通过。
+- `git diff --check`：待提交前执行。
+- 未运行 `npm test`，因为该命令会访问网易云和 B 站外部接口；本轮改动已用本地语法检查和本地行为脚本覆盖。
+
+未完成边界：
+
+- B 站切房失败回滚、自动重连、网易云并发限制和音频下载超时仍按 TODO 后续任务推进。
+- 前端共享工具仍是无构建静态脚本，长期拆分构建流程仍保留为 T13。
+
+是否更新 TODO：是，T03/T04/T05 已从当前待办列表移除，并补入已实现能力。
+
+是否更新 ARCHITECTURE：是，补充共享前端工具、B 站 helper、冷却提交时机和队列上限语义。
+
+提交哈希：待提交后补充。
+
+## 2026-05-30 T16 开源前基线收口
+
+任务 ID：T16
+
+目标：
+
+- 收口当前未提交的 T03/T04/T05 改动。
+- 在继续凭据检查、README 重写和 GitHub 上传前建立清晰的本地 Git 基线。
+
+范围：
+
+- 前序 T03/T04/T05 代码与文档改动。
+- `docs/TODO.md`
+- `docs/WORK_HISTORY.md`
+
+关键决策：
+
+- 不回退前序改动；先验证并作为一个可恢复提交落库。
+- T16 完成后从当前 TODO 推荐顺序中移除，后续从 T17 开始推进。
+
+验证命令和结果：
+
+- 同 T03/T04/T05 验证结果。
+- `git diff --check`：待提交前执行。
+
+提交哈希：待提交后补充。
+
+## 2026-05-30 GitHub 开源前规划
+
+任务 ID：OPEN-SOURCE-PLAN-20260530
+
+目标：
+
+- 将“先上传 GitHub”的目标拆成可执行 TODO。
+- 明确开源前必须完成根目录 `README.md` 重写。
+- 把“拥有 3 种以上相互独立功能”和“可被第三方程序引用或可编译为可执行软件”纳入验收口径。
+- 继续沿用本地 Git 仓库作为恢复点，上传前先确保提交边界和凭据安全。
+
+范围：
+
+- `docs/TODO.md`
+- `docs/WORK_HISTORY.md`
+- 只做规划，不修改业务代码。
+
+当前 Git 状态：
+
+- 本轮开始时工作区已有未提交改动：`docs/ARCHITECTURE.md`、`docs/TODO.md`、`docs/WORK_HISTORY.md`、`public/app.js`、`public/dashboard.html`、`public/dashboard.js`、`public/index.html`、`scripts/watch-bilibili.js`、`src/bilibili.js`、`src/queue.js`，以及未跟踪的 `public/shared.js`、`src/bilibiliHelpers.js`。
+- 这些改动属于前序 T03/T04/T05 工作，本轮不回退、不覆盖，只在 TODO 中补充先收口提交的要求。
+
+关键决策：
+
+- 新增 T16-T21：先收口当前未提交改动，再做凭据/仓库清洁检查、开源 README、第三方引用入口、GitHub 首推和可执行打包调研。
+- “第三方程序引用或可编译为可执行软件”近期优先选择第三方引用入口，因为当前 Node.js 服务新增无副作用 `main`/导出 API 的风险低于引入可执行打包链路。
+- 当前项目已经具备超过 3 种独立功能，但开源前必须在 `README.md` 中清晰列出并给出入口说明。
+
+验证命令和结果：
+
+- 已读取 `docs/TODO.md`、`docs/ARCHITECTURE.md`、`docs/WORK_HISTORY.md`、`package.json`。
+- 已执行 `git status --short` 和 `git log --oneline -5`，确认当前 HEAD 为 `a0489f0 docs: record T02 completion commit`，且工作区不是干净状态。
+- 本轮只改文档规划，未运行代码测试。
+
+未完成边界：
+
+- 尚未提交本轮文档改动，因为工作区已有前序未提交代码改动，后续应先按 T16 验证并建立清晰提交。
+- 尚未创建 GitHub remote，也未推送仓库；需等 T17 凭据检查和 T18 README 完成后执行。
+
+是否更新 TODO：是，新增开源目标、发布门槛和 T16-T21。
+
+是否更新 ARCHITECTURE：否，本轮未改变代码架构。
+
+提交哈希：待 T16 或单独文档提交完成后补充。

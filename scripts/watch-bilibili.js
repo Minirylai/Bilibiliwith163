@@ -1,34 +1,14 @@
 const { WebSocket } = require("ws");
 const config = require("../src/config");
+const {
+  clientBuvid,
+  cookieValue,
+  danmakuFromMessage,
+  getBaseCommand,
+  hostToAddress,
+} = require("../src/bilibiliHelpers");
 
 globalThis.WebSocket = WebSocket;
-
-function baseCommand(data) {
-  return String(data?.cmd || data?.msg?.cmd || "").split(":")[0];
-}
-
-function danmakuText(data) {
-  const info = data.info || [];
-  return {
-    text: info[1] || "",
-    user: info[2]?.[1] || "Anonymous",
-  };
-}
-
-function hostToAddress(host) {
-  if (!host?.host) return undefined;
-  return `wss://${host.host}:${host.wss_port || 443}/sub`;
-}
-
-function cookieValue(cookie, name) {
-  return (
-    cookie
-      .split(";")
-      .map((part) => part.trim())
-      .find((part) => part.startsWith(`${name}=`))
-      ?.slice(name.length + 1) || ""
-  );
-}
 
 (async () => {
   const { BilibiliApiClient, LiveWS } = await import("bilibili-live-danmaku");
@@ -45,8 +25,7 @@ function cookieValue(cookie, name) {
   const danmuInfo = await client.xliveGetDanmuInfo({ id: roomId });
   const address = hostToAddress(danmuInfo.data.host_list?.[0]);
   const uid = Number(cookieValue(client.cookie, "DedeUserID")) || 0;
-  const buvid =
-    client.cookies.get("buvid3") || client.cookies.get("buvid4") || client.cookies.get("buvid_fp");
+  const buvid = clientBuvid(client.cookies);
   const live = new LiveWS(roomId, {
     address,
     key: danmuInfo.data.token,
@@ -72,11 +51,11 @@ function cookieValue(cookie, name) {
   });
 
   live.addEventListener("MESSAGE", ({ data }) => {
-    const command = baseCommand(data);
+    const command = getBaseCommand(data);
     console.log(`[MESSAGE] ${command || "UNKNOWN"}`);
     if (command === "DANMU_MSG") {
-      const danmaku = danmakuText(data);
-      console.log(`[DANMU] ${danmaku.user}: ${danmaku.text}`);
+      const danmaku = danmakuFromMessage(data);
+      console.log(`[DANMU] ${danmaku.user.name}: ${danmaku.text}`);
       return;
     }
   });

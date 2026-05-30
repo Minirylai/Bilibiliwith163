@@ -3,39 +3,13 @@ const config = require("./config");
 const { parseSongRequest } = require("./songRequestParser");
 const { resolveSong } = require("./ncmApi");
 const queue = require("./queue");
-
-function getBaseCommand(data) {
-  const command = data?.cmd || data?.msg?.cmd || "";
-  return String(command).split(":")[0];
-}
-
-function danmakuFromMessage(data) {
-  const info = data.info || [];
-  return {
-    text: info[1] || "",
-    user: {
-      uid: info[2]?.[0] || 0,
-      name: info[2]?.[1] || "Anonymous",
-    },
-    raw: data,
-  };
-}
-
-function hostToAddress(host) {
-  if (!host?.host) return undefined;
-  const port = host.wss_port || 443;
-  return `wss://${host.host}:${port}/sub`;
-}
-
-function cookieValue(cookie, name) {
-  return (
-    cookie
-      .split(";")
-      .map((part) => part.trim())
-      .find((part) => part.startsWith(`${name}=`))
-      ?.slice(name.length + 1) || ""
-  );
-}
+const {
+  clientBuvid,
+  cookieValue,
+  danmakuFromMessage,
+  getBaseCommand,
+  hostToAddress,
+} = require("./bilibiliHelpers");
 
 async function connectBilibili(options = {}) {
   const { WebSocket } = require("ws");
@@ -62,8 +36,7 @@ async function connectBilibili(options = {}) {
   const danmuInfo = await client.xliveGetDanmuInfo({ id: realRoomId });
   const address = hostToAddress(danmuInfo.data.host_list?.[0]);
   const uid = Number(cookieValue(client.cookie, "DedeUserID")) || 0;
-  const buvid =
-    client.cookies.get("buvid3") || client.cookies.get("buvid4") || client.cookies.get("buvid_fp");
+  const buvid = clientBuvid(client.cookies);
   const live = new LiveWS(realRoomId, {
     address,
     key: danmuInfo.data.token,
@@ -187,7 +160,14 @@ async function handleDanmaku(danmaku) {
     throw new Error(`No playable song found: ${request.keyword}`);
   }
 
+  const finalCooldown = queue.canUserRequest(danmaku.user.uid);
+  if (!finalCooldown.ok) {
+    const seconds = Math.ceil(finalCooldown.remainingMs / 1000);
+    throw new Error(`Request too fast. Try again in ${seconds}s.`);
+  }
+
   const item = queue.addSong(song, danmaku.user, request.keyword);
+  queue.commitUserRequest(danmaku.user.uid);
   bus.emit("request:accepted", item);
 }
 

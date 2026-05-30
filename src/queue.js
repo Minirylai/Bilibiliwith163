@@ -22,6 +22,10 @@ function publicState() {
   };
 }
 
+function totalSongCount() {
+  return queue.length + (current ? 1 : 0);
+}
+
 function emitState() {
   bus.emit("queue:state", publicState());
 }
@@ -70,11 +74,17 @@ function canUserRequest(userId) {
     };
   }
 
-  lastRequestByUser.set(key, now);
   return {
     ok: true,
     remainingMs: 0,
   };
+}
+
+function commitUserRequest(userId) {
+  const key = userId || "anonymous";
+  const now = Date.now();
+  cleanupCooldowns(now);
+  lastRequestByUser.set(key, now);
 }
 
 function isDuplicate(songId) {
@@ -82,7 +92,7 @@ function isDuplicate(songId) {
 }
 
 function addSong(song, requester, keyword) {
-  if (queue.length >= config.maxQueueSize) {
+  if (totalSongCount() >= config.maxQueueSize) {
     throw new Error("Queue is full");
   }
 
@@ -156,6 +166,7 @@ function resetPlayback() {
 module.exports = {
   addSong,
   canUserRequest,
+  commitUserRequest,
   clearQueue,
   nextSong,
   publicState,

@@ -25,6 +25,7 @@ const previewStatus = document.getElementById("preview-status");
 const loadLocalFontsButton = document.getElementById("load-local-fonts");
 const localFontStatus = document.getElementById("local-font-status");
 const previewWallpaperToggle = document.getElementById("preview-wallpaper-toggle");
+const { cssFont, escapeHtml, hexToRgb, numberValue } = window.BilibiliNcmShared;
 
 const editorControls = {
   widgetWidth: document.getElementById("editor-widget-width"),
@@ -111,14 +112,6 @@ let localEditUntil = 0;
 let previewQueueMotionFrame = 0;
 const appearancePresetStorageKey = "bilibili-ncm-appearance-preset";
 const previewWallpaperCandidates = ["/pic/miku.png", "/pic/miku.jpg"];
-
-function escapeHtml(value) {
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
 
 function addEvent(text, tone = "info") {
   const li = document.createElement("li");
@@ -256,19 +249,9 @@ async function loadLocalFonts() {
 
 function updatePreviewSizes({ suppressObserver = true } = {}) {
   if (suppressObserver) suppressResizeObserver = true;
-  const numberValue = (value, fallback) => {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : fallback;
-  };
   const coverSize = Math.min(170, Math.max(72, numberValue(appearance.playerHeight, 132) - 28));
   const glassOpacity = Math.min(0.72, Math.max(0.08, numberValue(appearance.glassOpacity, 24) / 100));
   const glassBlur = Math.min(40, Math.max(0, numberValue(appearance.glassBlur, 24)));
-  const cssFont = (font) => `"${String(font || "Microsoft YaHei").replace(/"/g, "")}", "Microsoft YaHei", "Segoe UI", sans-serif`;
-  const hexToRgb = (hex, fallback) => {
-    const source = /^#[0-9a-fA-F]{6}$/.test(String(hex || "")) ? String(hex) : fallback;
-    const value = source.slice(1);
-    return `${parseInt(value.slice(0, 2), 16)}, ${parseInt(value.slice(2, 4), 16)}, ${parseInt(value.slice(4, 6), 16)}`;
-  };
   const target = previewShell || document.documentElement;
 
   target.style.width = `${appearance.widgetWidth}px`;

@@ -14,6 +14,7 @@ const nextSongButton = document.getElementById("next-song");
 const progressFill = document.getElementById("progress-fill");
 const progressTime = document.getElementById("progress-time");
 const rootStyle = document.documentElement.style;
+const { cssFont, escapeHtml, hexToRgb, numberValue, setPxVariable } = window.BilibiliNcmShared;
 
 const text = {
   unknownArtist: "\u672a\u77e5\u6b4c\u624b",
@@ -46,40 +47,20 @@ let trackTextMotionFrame = 0;
 let queueMotionFrame = 0;
 let queueItemMotionFrame = 0;
 
-function cssFont(value) {
-  return `"${String(value || "Microsoft YaHei").replace(/"/g, "")}", "Microsoft YaHei", "Segoe UI", sans-serif`;
-}
-
-function setPxVariable(name, value, fallback) {
-  const parsed = Number(value);
-  rootStyle.setProperty(name, `${Number.isFinite(parsed) ? parsed : fallback}px`);
-}
-
-function numberValue(value, fallback) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
-}
-
-function hexToRgb(hex, fallback) {
-  const source = /^#[0-9a-fA-F]{6}$/.test(String(hex || "")) ? String(hex) : fallback;
-  const value = source.slice(1);
-  return `${parseInt(value.slice(0, 2), 16)}, ${parseInt(value.slice(2, 4), 16)}, ${parseInt(value.slice(4, 6), 16)}`;
-}
-
 function applyAppearance(appearance = {}) {
-  setPxVariable("--widget-width", appearance.widgetWidth, 560);
-  setPxVariable("--now-playing-height", appearance.playerHeight, 132);
-  setPxVariable("--queue-panel-height", appearance.queueHeight, 242);
-  setPxVariable("--queue-item-height", appearance.queueItemHeight, 46);
-  setPxVariable("--player-radius", appearance.playerRadius, 26);
-  setPxVariable("--queue-radius", appearance.queueRadius, 26);
-  setPxVariable("--status-radius", appearance.statusRadius, 26);
-  setPxVariable("--title-font-size", appearance.titleFontSize, 32);
-  setPxVariable("--artist-font-size", appearance.artistFontSize, 19);
-  setPxVariable("--request-font-size", appearance.requestFontSize, 16);
-  setPxVariable("--queue-font-size", appearance.queueFontSize, 18);
-  setPxVariable("--status-bar-height", appearance.statusHeight, 42);
-  setPxVariable("--status-font-size", appearance.statusFontSize, 15);
+  setPxVariable(rootStyle, "--widget-width", appearance.widgetWidth, 560);
+  setPxVariable(rootStyle, "--now-playing-height", appearance.playerHeight, 132);
+  setPxVariable(rootStyle, "--queue-panel-height", appearance.queueHeight, 242);
+  setPxVariable(rootStyle, "--queue-item-height", appearance.queueItemHeight, 46);
+  setPxVariable(rootStyle, "--player-radius", appearance.playerRadius, 26);
+  setPxVariable(rootStyle, "--queue-radius", appearance.queueRadius, 26);
+  setPxVariable(rootStyle, "--status-radius", appearance.statusRadius, 26);
+  setPxVariable(rootStyle, "--title-font-size", appearance.titleFontSize, 32);
+  setPxVariable(rootStyle, "--artist-font-size", appearance.artistFontSize, 19);
+  setPxVariable(rootStyle, "--request-font-size", appearance.requestFontSize, 16);
+  setPxVariable(rootStyle, "--queue-font-size", appearance.queueFontSize, 18);
+  setPxVariable(rootStyle, "--status-bar-height", appearance.statusHeight, 42);
+  setPxVariable(rootStyle, "--status-font-size", appearance.statusFontSize, 15);
 
   const coverSize = Math.min(170, Math.max(72, numberValue(appearance.playerHeight, 132) - 28));
   rootStyle.setProperty("--cover-size", `${coverSize}px`);
@@ -104,14 +85,6 @@ function applyAppearance(appearance = {}) {
     refreshQueueItemMotion();
     refreshQueueMotion();
   });
-}
-
-function escapeHtml(value) {
-  return String(value || "")
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
 }
 
 function showStatus(message) {
