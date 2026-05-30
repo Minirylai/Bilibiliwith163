@@ -1,6 +1,6 @@
 # Bilibiliwith163 工作记录
 
-更新时间：2026-05-25
+更新时间：2026-05-30
 
 本文记录已完成工作、关键决策、验证结果和剩余边界。当前推进以 `README.md`、`TODO.md`、`ARCHITECTURE.md` 和本文为准。
 
@@ -809,3 +809,50 @@
 是否更新 ARCHITECTURE：是，补充 caxa 打包路线和运行根目录逻辑。
 
 提交哈希：`84573ea build: add caxa executable packaging`
+
+## 2026-05-30 T21 正式 Release 包
+
+任务 ID：T21-RELEASE-PACKAGE-20260530
+
+目标：
+
+- 生成面向普通用户的 Windows x64 正式 Release 包。
+- 保持源码仓库只提交构建脚本和说明，不提交 `dist/` 二进制产物。
+- 尝试准备 GitHub 上传所需产物。
+
+范围：
+
+- `package.json`
+- `package-lock.json`
+- `scripts/build-release.mjs`
+- `LICENSE`
+- `README.md`
+- `docs/ARCHITECTURE.md`
+- `docs/TODO.md`
+- `docs/WORK_HISTORY.md`
+
+关键决策：
+
+- 新增 `npm run build:release`，先复用 `build:exe:caxa` 生成自解压 exe，再组装 `Bilibiliwith163-v1.0.0-windows-x64.zip`。
+- 发布包内的可执行文件命名为 `Bilibiliwith163.exe`，同时包含 `.env.example`、`README.md`、`RUNNING.md`、`RELEASE_NOTES.md` 和 `LICENSE`。
+- 发布脚本生成同名 `.sha256` 文件，便于 GitHub Release 页面附带校验值。
+- `dist/` 继续保持在 `.gitignore` 中，发布产物不进入源码提交。
+
+验证命令和结果：
+
+- `node --check scripts\build-release.mjs`：通过。
+- `npm run build:release`：通过，生成 `dist\Bilibiliwith163-v1.0.0-windows-x64.zip` 和 `dist\Bilibiliwith163-v1.0.0-windows-x64.sha256`。
+- 发布包 SHA256：`1216b0e371fb502739dfb6226e3f57f8a653fe20e0edded8a0f6e1a60f2699c1`。
+- 解压发布包到 `dist\release-smoke\`，写入独立 `.env` 后启动 `Bilibiliwith163.exe`，验证 `GET /api/state`、`GET /dashboard.html` 和 `GET /api/player`：通过。
+- `gh auth status`：失败，当前本机未登录 GitHub CLI，无法用 `gh release create` 上传二进制资产。
+
+未完成边界：
+
+- GitHub Release 资产上传需要先执行 `gh auth login`，或设置 `GH_TOKEN` / `GITHUB_TOKEN`。
+- 当前机器 PATH 中未发现 `mpv` 或 `ffplay`，发布包启动验证只覆盖 HTTP 服务和播放器缺失状态提示，未覆盖真实出声。
+
+是否更新 TODO：是，T21 已从当前待办列表移除，并补充 Release 包已实现能力。
+
+是否更新 ARCHITECTURE：是，补充 `build:release` 发布包结构和输出路径。
+
+提交哈希：本提交 `build: add release package workflow`

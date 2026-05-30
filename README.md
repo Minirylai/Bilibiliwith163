@@ -191,7 +191,22 @@ npm start
 
 ## 可执行文件打包
 
-推荐先使用 `caxa` 简单打包路线。它会把生产依赖、静态资源和 Node 运行时打进一个自解压 exe，不需要 NASM 或本地 Node 源码编译工具链。构建该 exe 需要 Node.js 22.15 或更高版本；源码运行仍按上面的运行要求执行。
+推荐使用正式 Release 打包命令。它会先通过 `caxa` 生成自解压 exe，再整理出 Windows x64 zip 和 SHA256 校验文件。`caxa` 会把生产依赖、静态资源和 Node 运行时打进 exe，不需要 NASM 或本地 Node 源码编译工具链。构建该 exe 需要 Node.js 22.15 或更高版本；源码运行仍按上面的运行要求执行。
+
+```powershell
+npm run build:release
+```
+
+输出路径：
+
+```text
+dist/Bilibiliwith163-v1.0.0-windows-x64.zip
+dist/Bilibiliwith163-v1.0.0-windows-x64.sha256
+```
+
+发布包内包含 `Bilibiliwith163.exe`、`.env.example`、`README.md`、`RUNNING.md`、`RELEASE_NOTES.md` 和 `LICENSE`。运行 exe 时，把 `.env` 放在 exe 所在目录。运行期写入的 `.cache/`、网易云登录 Cookie、房间号配置和自动安装的便携播放器也会保存在 exe 启动目录。
+
+如果只需要生成裸 exe，可以运行：
 
 ```powershell
 npm run build:exe:caxa
@@ -202,8 +217,6 @@ npm run build:exe:caxa
 ```text
 dist/bilibiliwith163-caxa.exe
 ```
-
-运行 exe 时，把 `.env` 放在 exe 所在目录。运行期写入的 `.cache/`、网易云登录 Cookie、房间号配置和自动安装的便携播放器也会保存在 exe 启动目录。
 
 项目也保留 `@yao-pkg/pkg` 高级打包路线：
 

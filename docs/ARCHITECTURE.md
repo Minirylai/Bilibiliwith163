@@ -189,13 +189,20 @@ flowchart LR
 - `.env`、`.cache/`、外观配置、控制台设置和音频缓存始终写入运行根目录。
 - `public/` 和 `pic/` 优先读取运行根目录下的外部目录；不存在时回退到打包快照内的内置资源。
 
-推荐的简单打包命令是：
+推荐的发布打包命令是：
 
 ```powershell
-npm run build:exe:caxa
+npm run build:release
 ```
 
-该命令会创建 `dist/caxa-input/` 临时目录，只安装生产依赖，然后用 `@appthreat/caxa` 生成 `dist/bilibiliwith163-caxa.exe`。这种方式不编译 Node 源码，不需要 NASM，产物本质是“Node 运行时 + 项目文件”的自解压 exe。`@appthreat/caxa` 构建阶段要求 Node.js 22.15 或更高版本；当前本机验证生成的 exe 约 64.6 MB。
+该命令会先执行 `build:exe:caxa`，创建 `dist/caxa-input/` 临时目录，只安装生产依赖，然后用 `@appthreat/caxa` 生成 `dist/bilibiliwith163-caxa.exe`。随后 `scripts/build-release.mjs` 会整理 `dist/release/Bilibiliwith163-v<version>-windows-x64/`，写入 `Bilibiliwith163.exe`、`.env.example`、`README.md`、`RUNNING.md`、`RELEASE_NOTES.md` 和 `LICENSE`，最终输出 zip 与 SHA256 校验文件：
+
+```text
+dist/Bilibiliwith163-v1.0.0-windows-x64.zip
+dist/Bilibiliwith163-v1.0.0-windows-x64.sha256
+```
+
+这种方式不编译 Node 源码，不需要 NASM，产物本质是“Node 运行时 + 项目文件”的自解压 exe。`@appthreat/caxa` 构建阶段要求 Node.js 22.15 或更高版本；当前本机验证生成的 exe 约 64.6 MB，zip 发布包约 62.7 MB。
 
 保留的高级打包命令是：
 
