@@ -485,7 +485,7 @@
 
 是否更新 ARCHITECTURE：是，remote 从 `none` 更新为 GitHub origin。
 
-提交哈希：待提交后补充。
+提交哈希：`40a59ff docs: record github publish`
 
 ## 2026-05-30 T21 可执行软件打包调研与配置
 
