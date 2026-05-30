@@ -652,6 +652,8 @@
 范围：
 
 - `.env.example`
+- `package.json`
+- `package-lock.json`
 - `README.md`
 - `src/config.js`
 - `src/ncmApi.js`
@@ -689,3 +691,68 @@
 是否更新 ARCHITECTURE：是，补充网易云音质策略和 API。
 
 提交哈希：`ca2fdf9 feat: add playback and cache quality controls`
+
+## 2026-05-30 后端本地播放器输出
+
+任务 ID：LOCAL-PLAYER-OUTPUT-20260530
+
+目标：
+
+- 避免 OBS / 直播姬浏览器源后台或最小化时 Chromium/CEF 节流导致音频卡顿变调。
+- 后端收到点歌后调用本机 `mpv` 或 `ffplay` 播放完整缓存文件或本地代理 URL。
+- 浏览器源只展示当前播放状态、进度和队列。
+- 控制台和 OBS 源按钮继续支持暂停、继续、下一首和停止。
+
+范围：
+
+- `.env.example`
+- `README.md`
+- `src/config.js`
+- `src/audioCache.js`
+- `src/localPlayer.js`
+- `src/playerInstaller.js`
+- `src/server.js`
+- `src/runtimePaths.js`
+- `public/index.html`
+- `public/app.js`
+- `public/dashboard.html`
+- `public/dashboard.js`
+- `docs/ARCHITECTURE.md`
+- `docs/TODO.md`
+- `docs/WORK_HISTORY.md`
+
+关键决策：
+
+- 新增 `src/localPlayer.js` 作为后端音频输出边界，队列仍然是当前播放和下一首的单一状态源。
+- `localPlayer` 监听 `player:play` 和 `player:idle`；播放器自然退出后发出 `player:ended`，由 `server.js` 调用 `queue.nextSong()`。
+- 本地播放优先使用完整缓存文件；缓存未完成时播放 `http://127.0.0.1:<PORT>/api/audio/:requestId`，继续复用现有缓存代理和 Range 能力。
+- `mpv` 为推荐后端，支持 IPC 暂停/继续和进度读取；`ffplay` 作为兜底，暂停/继续为尽力而为。
+- 新增 `src/playerInstaller.js`，缺少播放器时可从 GitHub 的 `shinchiro/mpv-winbuild-cmake` 最新 release 下载 Windows x64 `mpv` 构建，使用 `7zip-bin` 解压到 `.cache/player/mpv/`，不修改系统 PATH。
+- 新增 `LOCAL_PLAYER_AUTO_INSTALL=false`，需要时可改为 `true` 让服务启动时自动安装便携版 `mpv`；控制台也提供“一键安装播放器”按钮。
+- OBS 源移除 `<audio>`，只接收 `queue:state` 和 `player:state` 更新 UI；控制按钮改为调用后端 REST API。
+- 控制台新增暂停/继续按钮和本地播放器状态展示。
+
+验证命令和结果：
+
+- `node --check src\config.js; node --check src\audioCache.js; node --check src\localPlayer.js; node --check src\server.js; node --check public\app.js; node --check public\dashboard.js`：通过。
+- `node --check src\playerInstaller.js; node --check src\runtimePaths.js`：通过。
+- `npm audit --omit=dev`：通过，`found 0 vulnerabilities`。
+- `git diff --check`：通过。
+- 本地 Node 状态脚本：`localPlayer.bind()` 在未安装播放器时返回 `available:false`，并给出安装 `mpv`/`ffplay` 或设置 `LOCAL_PLAYER_PATH` 的提示：通过。
+- 本地 Node 状态脚本：`playerInstaller.bundledMpvPath()` 返回 `.cache\player\mpv\mpv.exe`，安装状态可读取：通过。
+- `PORT=3894` 临时启动服务，验证 `GET /api/player` 返回 200，控制台 `/dashboard.html` 返回 200，OBS 源 `/` 返回 200：通过。
+- `PORT=3896` 临时启动服务，验证 `GET /api/player/install` 返回安装状态，`GET /api/player` 返回播放器缺失提示：通过。
+- 使用内置浏览器打开 `http://127.0.0.1:3895/dashboard.html` 和 `/`：控制台显示本地播放器状态，OBS 源无 `<audio>` 元素，页面标题和等待点歌状态正常。
+- 使用内置浏览器打开 `http://127.0.0.1:3897/dashboard.html`：缺少播放器时“一键安装播放器”按钮可见，控制台不再包含 `dash-audio`：通过。
+- GitHub release API 检查：`shinchiro/mpv-winbuild-cmake` 最新 release 有 `mpv-x86_64-v3-20260530-git-13a3e3a.7z`，大小约 34 MB。
+
+未完成边界：
+
+- 当前机器 PATH 中未发现 `mpv`、`ffplay` 或 `vlc`；代码已能报告缺失播放器并提供自动安装，但本轮尚未实际下载 34 MB 的 mpv 包，也未完成出声验证。
+- 尚未运行外部网易云/B站冒烟测试。
+
+是否更新 TODO：是，补充本地播放器已实现能力，并新增 T22 用于安装和实机验证 `mpv` 链路。
+
+是否更新 ARCHITECTURE：是，补充后端本地播放模块、API、Socket 事件和 OBS 源职责变化。
+
+提交哈希：待提交后补充。

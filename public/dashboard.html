@@ -17,6 +17,7 @@
         <div class="actions hero-actions">
           <div class="hero-button-row">
             <a class="ghost-link" href="/" target="_blank" rel="noreferrer">打开 OBS 源</a>
+            <button id="player-toggle" type="button" title="暂停或继续">暂停</button>
             <button id="skip" type="button" title="切歌">跳过</button>
             <button id="clear" type="button" title="清空待播队列">清空队列</button>
             <button id="reset" type="button" title="停止当前歌曲并清空">停止</button>
@@ -65,7 +66,8 @@
         <div class="tool-panel glass-card current-panel">
           <h2>当前播放</h2>
           <div id="dash-current" class="empty">暂无歌曲</div>
-          <audio id="dash-audio" preload="none" hidden></audio>
+          <p id="player-state" class="panel-note">本地播放器待机</p>
+          <button id="player-install" type="button" hidden>一键安装播放器</button>
         </div>
         <div class="tool-panel glass-card">
           <h2>弹幕与请求</h2>

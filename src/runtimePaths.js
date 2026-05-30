@@ -20,6 +20,7 @@ module.exports = {
   dashboardSettingsPath: writablePath(".cache", "dashboard.json"),
   envPath: writablePath(".env"),
   picDir: readableDir("pic"),
+  playerDir: writablePath(".cache", "player"),
   projectRoot,
   publicDir: readableDir("public"),
   runtimeRoot,

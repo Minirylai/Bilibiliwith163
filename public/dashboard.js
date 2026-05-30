@@ -2,7 +2,9 @@ const socket = io();
 
 const statusText = document.getElementById("dash-status");
 const current = document.getElementById("dash-current");
-const dashAudio = document.getElementById("dash-audio");
+const playerToggleButton = document.getElementById("player-toggle");
+const playerInstallButton = document.getElementById("player-install");
+const playerStateText = document.getElementById("player-state");
 const queueList = document.getElementById("dash-queue");
 const events = document.getElementById("events");
 const ncmLoginStatus = document.getElementById("ncm-login-status");
@@ -114,6 +116,7 @@ let applyingAppearance = false;
 let suppressResizeObserver = false;
 let localEditUntil = 0;
 let previewQueueMotionFrame = 0;
+let latestPlayerState = { status: "idle", paused: false };
 const appearancePresetStorageKey = "bilibili-ncm-appearance-preset";
 const previewWallpaperCandidates = ["/pic/miku.png", "/pic/miku.jpg"];
 
@@ -503,10 +506,6 @@ function renderCurrent(song) {
   if (!song) {
     current.className = "empty";
     current.textContent = "暂无歌曲";
-    dashAudio.hidden = true;
-    dashAudio.removeAttribute("src");
-    dashAudio.dataset.src = "";
-    dashAudio.load();
     previewTrackTitle.textContent = "当前歌曲标题";
     previewTrackArtist.textContent = "歌手 / 作者";
     previewTrackRequest.textContent = "来自观众的点歌";
@@ -527,10 +526,48 @@ function renderCurrent(song) {
   previewTrackArtist.textContent = song.artists || "歌手 / 作者";
   previewTrackRequest.textContent = `来自 ${song.requester?.name || "观众"} 的点歌`;
   previewCover.src = song.cover || "/placeholder.svg";
+}
 
-  const streamUrl = song.streamUrl || (song.requestId ? `/api/audio/${encodeURIComponent(song.requestId)}` : "");
-  dashAudio.hidden = true;
-  dashAudio.dataset.src = streamUrl;
+function renderPlayerState(player = {}) {
+  latestPlayerState = { ...latestPlayerState, ...player };
+  const paused = latestPlayerState.paused || latestPlayerState.status === "paused";
+  playerToggleButton.textContent = paused ? "继续" : "暂停";
+  playerToggleButton.title = paused ? "继续播放" : "暂停播放";
+  playerInstallButton.hidden = latestPlayerState.available !== false;
+
+  if (latestPlayerState.status === "error") {
+    playerStateText.textContent = latestPlayerState.message || "本地播放器异常";
+    playerStateText.className = "panel-note bad-text";
+    return;
+  }
+
+  if (latestPlayerState.status === "playing" || latestPlayerState.status === "paused") {
+    const backend = latestPlayerState.backend || "local";
+    const source = latestPlayerState.targetKind === "file" ? "本地缓存" : "代理流";
+    playerStateText.textContent = `${paused ? "已暂停" : "播放中"} / ${backend} / ${source}`;
+    playerStateText.className = "panel-note ok-text";
+    return;
+  }
+
+  playerStateText.textContent = latestPlayerState.message || "本地播放器待机";
+  playerStateText.className = "panel-note";
+}
+
+async function installLocalPlayer() {
+  playerInstallButton.disabled = true;
+  playerStateText.textContent = "正在安装 mpv，本过程会从 GitHub 下载开源播放器...";
+  playerStateText.className = "panel-note";
+  try {
+    const payload = await postJson("/api/player/install");
+    renderPlayerState(payload.player || {});
+    addEvent("本地播放器安装完成", "ok");
+  } catch (error) {
+    playerStateText.textContent = `播放器安装失败：${error.message}`;
+    playerStateText.className = "panel-note bad-text";
+    addEvent(`播放器安装失败：${error.message}`, "bad");
+  } finally {
+    playerInstallButton.disabled = false;
+  }
 }
 
 function renderBilibiliStatus(status) {
@@ -676,6 +713,10 @@ async function startNcmQrLogin() {
 document.getElementById("skip").addEventListener("click", () => {
   postJson("/api/skip").catch((error) => addEvent(`跳过失败：${error.message}`, "bad"));
 });
+playerToggleButton.addEventListener("click", () => {
+  postJson("/api/player/toggle").catch((error) => addEvent(`暂停/继续失败：${error.message}`, "bad"));
+});
+playerInstallButton.addEventListener("click", installLocalPlayer);
 document.getElementById("clear").addEventListener("click", () => {
   postJson("/api/clear").catch((error) => addEvent(`清空失败：${error.message}`, "bad"));
 });
@@ -738,6 +779,7 @@ socket.on("appearance:state", (state) => {
   fillAppearanceControls(state);
 });
 socket.on("bilibili:status", renderBilibiliStatus);
+socket.on("player:state", renderPlayerState);
 socket.on("ncm:quality", renderNcmQuality);
 socket.on("danmaku", (danmaku) => addEvent(`${danmaku.user.name}: ${danmaku.text}`));
 socket.on("request:received", (request) => addEvent(`收到点歌：${request.user.name} / ${request.keyword}`, "ok"));

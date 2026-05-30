@@ -346,6 +346,32 @@ async function handleAudioRequest(req, res) {
   }
 }
 
+async function playbackSourceForRequest(requestId, baseUrl = "") {
+  const entry = registry.get(requestId);
+  if (!entry) {
+    throw new Error("Unknown audio request");
+  }
+
+  const stat = await cachedFile(entry);
+  if (stat) {
+    return {
+      cached: true,
+      contentType: entry.contentType,
+      kind: "file",
+      path: entry.filePath,
+      size: stat.size,
+    };
+  }
+
+  const prefix = String(baseUrl || "").replace(/\/+$/g, "");
+  return {
+    cached: false,
+    contentType: entry.contentType,
+    kind: "url",
+    url: `${prefix}/api/audio/${encodeURIComponent(requestId)}`,
+  };
+}
+
 async function proxyRemoteAudio(req, res, entry) {
   const headers = {};
   if (req.headers.range) {
@@ -382,6 +408,7 @@ module.exports = {
   cleanupCache,
   createRequestId,
   handleAudioRequest,
+  playbackSourceForRequest,
   registerSong,
   releaseSong,
   warmSong,

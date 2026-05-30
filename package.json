@@ -29,6 +29,7 @@
   "type": "commonjs",
   "dependencies": {
     "@neteasecloudmusicapienhanced/api": "^4.32.1",
+    "7zip-bin": "^5.2.0",
     "bilibili-live-danmaku": "^0.7.15",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",

@@ -12,6 +12,8 @@ const { connectBilibili, handleDanmaku } = require("./bilibili");
 const { resolveSong, searchSongs } = require("./ncmApi");
 const ncmAuth = require("./ncmAuth");
 const { cacheStats, cleanupCache, handleAudioRequest } = require("./audioCache");
+const localPlayer = require("./localPlayer");
+const playerInstaller = require("./playerInstaller");
 const paths = require("./runtimePaths");
 
 const app = express();
@@ -283,6 +285,41 @@ app.post("/api/cache/cleanup", async (req, res) => {
   }
 });
 
+app.get("/api/player", (req, res) => {
+  res.json(localPlayer.getState());
+});
+
+app.get("/api/player/install", (req, res) => {
+  res.json(playerInstaller.getInstallStatus());
+});
+
+app.post("/api/player/install", async (req, res) => {
+  try {
+    const result = await playerInstaller.installMpv();
+    localPlayer.refreshAvailability();
+    res.json({ ...result, player: localPlayer.getState() });
+  } catch (error) {
+    res.status(500).json({ error: error.message, install: playerInstaller.getInstallStatus() });
+  }
+});
+
+app.post("/api/player/pause", async (req, res) => {
+  res.json(await localPlayer.pause());
+});
+
+app.post("/api/player/resume", async (req, res) => {
+  res.json(await localPlayer.resume());
+});
+
+app.post("/api/player/toggle", async (req, res) => {
+  res.json(await localPlayer.togglePause());
+});
+
+app.post("/api/player/stop", (req, res) => {
+  queue.resetPlayback();
+  res.json(queue.publicState());
+});
+
 app.post("/api/request", async (req, res) => {
   try {
     const keyword = String(req.body.keyword || "").trim();
@@ -363,6 +400,7 @@ app.post("/api/reset", (req, res) => {
 
 io.on("connection", (socket) => {
   socket.emit("queue:state", queue.publicState());
+  socket.emit("player:state", localPlayer.getState());
   socket.emit("appearance:state", appearance.loadAppearance());
   socket.emit("ncm:quality", qualityPayload());
   if (bilibiliStatus) {
@@ -376,6 +414,7 @@ const forwardEvents = [
   "log",
   "player:idle",
   "player:play",
+  "player:state",
   "ncm:quality",
   "appearance:state",
   "queue:added",
@@ -408,6 +447,32 @@ for (const eventName of forwardEvents) {
     }
     io.emit(eventName, payload);
   });
+}
+
+bus.on("player:ended", (event) => {
+  const current = queue.publicState().current;
+  if (!current || current.requestId !== event?.song?.requestId) return;
+  queue.nextSong(event.reason || "ended");
+});
+
+localPlayer.bind({ baseUrl: `http://127.0.0.1:${config.port}` });
+
+if (config.localPlayerAutoInstall && !localPlayer.getState().available) {
+  playerInstaller
+    .installMpv()
+    .then(() => {
+      localPlayer.refreshAvailability();
+      bus.emit("log", {
+        level: "info",
+        message: "本地 mpv 自动安装完成。",
+      });
+    })
+    .catch((error) => {
+      bus.emit("log", {
+        level: "error",
+        message: `本地 mpv 自动安装失败：${error.message}`,
+      });
+    });
 }
 
 server.on("error", (error) => {
