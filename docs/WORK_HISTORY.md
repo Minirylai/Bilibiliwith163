@@ -688,4 +688,4 @@
 
 是否更新 ARCHITECTURE：是，补充网易云音质策略和 API。
 
-提交哈希：待提交后补充。
+提交哈希：`ca2fdf9 feat: add playback and cache quality controls`
