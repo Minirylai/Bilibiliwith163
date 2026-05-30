@@ -637,4 +637,4 @@
 
 是否更新 ARCHITECTURE：是，补充缓存文件命名、复用、引用释放和回收逻辑。
 
-提交哈希：待提交后补充。
+提交哈希：`12a97e0 fix: reuse and release audio cache files`
