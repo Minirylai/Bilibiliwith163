@@ -275,3 +275,49 @@
 是否更新 ARCHITECTURE：否，本轮未改变代码架构。
 
 提交哈希：待 T16 或单独文档提交完成后补充。
+
+## 2026-05-30 T17 GitHub 上传前凭据和仓库清洁检查
+
+任务 ID：T17
+
+目标：
+
+- 确认公开上传前当前跟踪文件和 Git 历史中没有真实 Cookie 形态的凭据。
+- 确认 `.env`、`.cache/`、日志和 `node_modules/` 没有进入 Git 跟踪。
+- 记录当前 GitHub remote 状态。
+
+范围：
+
+- `.gitignore`
+- `.env.example`
+- Git 跟踪文件列表
+- Git 历史
+- `docs/TODO.md`
+- `docs/WORK_HISTORY.md`
+
+验证命令和结果：
+
+- `git status --short`：T17 开始前工作区干净。
+- `git ls-files .env .cache node_modules "*.log" ".*.log"`：无输出，说明这些路径未被跟踪。
+- `git remote -v`：无输出，当前尚未配置 GitHub remote。
+- 读取 `.env.example`：只包含空占位配置，未发现真实 Cookie。
+- 当前跟踪文件凭据形态扫描：`current_secret_like_hits=0`。
+- Git 历史凭据形态扫描：`history_secret_like_hits=0`。
+- 当前跟踪文件通用 token 形态扫描：`current_generic_token_hits=0`。
+- `.env` 历史提交检查：`env_history_commits=0`。
+
+关键决策：
+
+- 当前没有发现需要重写 Git 历史的凭据问题。
+- T17 完成后从当前 TODO 推荐顺序中移除，后续先推进 T18 和 T19。
+
+未完成边界：
+
+- 尚未配置 GitHub remote；该动作留给 T20。
+- 尚未新增 CI 或 Release 检查清单；当前 TODO 仍保留相关缺口。
+
+是否更新 TODO：是，T17 已从当前待办列表移除，并补入已实现能力。
+
+是否更新 ARCHITECTURE：否，本轮未改变架构。
+
+提交哈希：待提交后补充。
