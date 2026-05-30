@@ -200,8 +200,8 @@ npm run build:release
 输出路径：
 
 ```text
-dist/Bilibiliwith163-v1.0.0-windows-x64.zip
-dist/Bilibiliwith163-v1.0.0-windows-x64.sha256
+dist/Bilibiliwith163-v<version>-windows-x64.zip
+dist/Bilibiliwith163-v<version>-windows-x64.sha256
 ```
 
 发布包内包含 `Bilibiliwith163.exe`、`.env.example`、`README.md`、`RUNNING.md`、`RELEASE_NOTES.md` 和 `LICENSE`。运行 exe 时，把 `.env` 放在 exe 所在目录。运行期写入的 `.cache/`、网易云登录 Cookie、房间号配置和自动安装的便携播放器也会保存在 exe 启动目录。
