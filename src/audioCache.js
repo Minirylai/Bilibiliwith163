@@ -5,6 +5,7 @@ const path = require("path");
 const { pipeline } = require("stream/promises");
 const { Readable } = require("stream");
 const config = require("./config");
+const bus = require("./eventBus");
 const paths = require("./runtimePaths");
 
 const cacheDir = paths.audioCacheDir;
@@ -55,28 +56,41 @@ async function warmSong(requestId) {
   return task;
 }
 
+async function cachedFile(entry) {
+  try {
+    const stat = await fsp.stat(entry.filePath);
+    if (stat.size > 0) {
+      return stat;
+    }
+  } catch {
+    // Cache miss.
+  }
+  return null;
+}
+
 async function download(entry) {
   await fsp.mkdir(cacheDir, {
     recursive: true,
   });
 
-  try {
-    const stat = await fsp.stat(entry.filePath);
-    if (stat.size > 0) return entry.filePath;
-  } catch {
-    // Cache miss.
-  }
+  const existing = await cachedFile(entry);
+  if (existing) return entry.filePath;
 
   const tmpPath = `${entry.filePath}.tmp`;
-  const response = await fetch(entry.remoteUrl);
-  if (!response.ok || !response.body) {
-    throw new Error(`Audio download failed: ${response.status} ${response.statusText}`);
-  }
+  try {
+    const response = await fetch(entry.remoteUrl);
+    if (!response.ok || !response.body) {
+      throw new Error(`Audio download failed: ${response.status} ${response.statusText}`);
+    }
 
-  await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(tmpPath));
-  await fsp.rename(tmpPath, entry.filePath);
-  await cleanupCache();
-  return entry.filePath;
+    await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(tmpPath));
+    await fsp.rename(tmpPath, entry.filePath);
+    await cleanupCache();
+    return entry.filePath;
+  } catch (error) {
+    await fsp.unlink(tmpPath).catch(() => {});
+    throw error;
+  }
 }
 
 async function listCacheFiles() {
@@ -184,8 +198,12 @@ async function handleAudioRequest(req, res) {
   }
 
   try {
-    await warmSong(requestId);
-    const stat = await fsp.stat(entry.filePath);
+    const stat = await cachedFile(entry);
+    if (!stat) {
+      await proxyRemoteAudio(req, res, entry);
+      return;
+    }
+
     const range = parseRange(req.headers.range, stat.size);
 
     res.setHeader("Accept-Ranges", "bytes");
@@ -203,8 +221,43 @@ async function handleAudioRequest(req, res) {
     res.setHeader("Content-Length", stat.size);
     fs.createReadStream(entry.filePath).pipe(res);
   } catch (error) {
+    if (res.headersSent) {
+      res.destroy(error);
+      return;
+    }
     res.status(502).json({ error: error.message });
   }
+}
+
+async function proxyRemoteAudio(req, res, entry) {
+  const headers = {};
+  if (req.headers.range) {
+    headers.Range = req.headers.range;
+  }
+
+  const response = await fetch(entry.remoteUrl, { headers });
+  if (!response.ok || !response.body) {
+    throw new Error(`Audio proxy failed: ${response.status} ${response.statusText}`);
+  }
+
+  const statusCode = response.status === 206 ? 206 : 200;
+  res.status(statusCode);
+  res.setHeader("Accept-Ranges", response.headers.get("accept-ranges") || "bytes");
+  res.setHeader("Content-Type", response.headers.get("content-type") || entry.contentType);
+  res.setHeader("Cache-Control", "private, max-age=300");
+
+  const contentLength = response.headers.get("content-length");
+  const contentRange = response.headers.get("content-range");
+  if (contentLength) res.setHeader("Content-Length", contentLength);
+  if (contentRange) res.setHeader("Content-Range", contentRange);
+  res.flushHeaders?.();
+
+  bus.emit("log", {
+    level: "info",
+    message: "Audio cache miss; streaming from remote source while cache warms.",
+  });
+
+  await pipeline(Readable.fromWeb(response.body), res);
 }
 
 module.exports = {

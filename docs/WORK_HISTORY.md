@@ -548,3 +548,47 @@
 是否更新 ARCHITECTURE：是，新增运行路径和 exe 打包说明。
 
 提交哈希：`c852f30 build: add executable packaging setup`
+
+## 2026-05-30 直播点歌卡顿变调修复
+
+任务 ID：AUDIO-STUTTER-20260530
+
+目标：
+
+- 缓解直播点歌播放时经常出现的卡顿和变调。
+- 降低音频缓存未完成时 OBS 播放源等待整首下载的风险。
+- 避免 OBS 源重复加载同一首歌，减少播放中断。
+
+范围：
+
+- `src/audioCache.js`
+- `public/app.js`
+- `docs/ARCHITECTURE.md`
+- `docs/TODO.md`
+- `docs/WORK_HISTORY.md`
+
+关键决策：
+
+- `/api/audio/:requestId` 在本地缓存文件已完成时继续走本地文件和 Range 响应。
+- 本地缓存未命中时，不再等待 `warmSong()` 完整下载，而是立即代理远端音频响应给客户端，同时后台缓存继续预热。
+- 下载失败时清理 `.tmp` 文件，避免失败残留污染后续缓存判断。
+- OBS 前端播放同一首歌时不重复设置 `src` 和 `load()`。
+- OBS 前端强制 `defaultPlaybackRate` / `playbackRate` 为 `1`，并开启浏览器支持的 pitch preservation，防止异常 `ratechange` 造成变调。
+
+验证命令和结果：
+
+- `node --check src\audioCache.js; node --check public\app.js; node --check src\server.js`：通过。
+- 本地 Express 代理行为脚本：构造延迟返回的远端音频，缓存未命中时 `/api/audio/:requestId` 约 30ms 返回 206 音频响应头，证明不会等待完整远端 body 结束：通过。
+- 打包残留进程检查：已停止本轮残留的 `pkg src/server.js` 进程。
+
+未完成边界：
+
+- 需要重启正在运行的服务进程，现有 OBS 页面也需要刷新，才能加载这次修复。
+- 如果仍卡顿，需要继续采集 OBS 端音频日志、CPU 占用、网易云远端响应耗时和具体歌曲格式。
+- `audioCache.download()` 仍没有显式 AbortController 超时，T11 后续继续完善。
+
+是否更新 TODO：是，补充音频代理和前端播放稳定性已实现能力，并保留 T11 后续边界。
+
+是否更新 ARCHITECTURE：是，补充缓存未完成时的远端流式代理行为。
+
+提交哈希：待提交后补充。

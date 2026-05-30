@@ -33,6 +33,7 @@ const text = {
   removeQueueItem: "\u79fb\u9664\u8be5\u6b4c",
   autoplayBlocked: "\u81ea\u52a8\u64ad\u653e\u88ab\u62e6\u622a\uff0c\u8bf7\u5728 OBS \u4ea4\u4e92\u7a97\u53e3\u70b9\u51fb\u4e00\u6b21\u9875\u9762",
   playFailed: "\u64ad\u653e\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5",
+  buffering: "\u97f3\u9891\u7f13\u51b2\u4e2d",
   nextFailed: "\u5207\u6b4c\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5",
   removeFailed: "\u79fb\u9664\u5931\u8d25\uff0c\u8bf7\u7a0d\u540e\u91cd\u8bd5",
   bilibiliError: "B\u7ad9\u8fde\u63a5\u5f02\u5e38",
@@ -46,6 +47,14 @@ let activeRequestId = "";
 let trackTextMotionFrame = 0;
 let queueMotionFrame = 0;
 let queueItemMotionFrame = 0;
+
+function stabilizeAudioPlayback() {
+  audio.defaultPlaybackRate = 1;
+  audio.playbackRate = 1;
+  if ("preservesPitch" in audio) audio.preservesPitch = true;
+  if ("mozPreservesPitch" in audio) audio.mozPreservesPitch = true;
+  if ("webkitPreservesPitch" in audio) audio.webkitPreservesPitch = true;
+}
 
 function applyAppearance(appearance = {}) {
   setPxVariable(rootStyle, "--widget-width", appearance.widgetWidth, 560);
@@ -270,11 +279,16 @@ async function playSong(song) {
   const url = playbackUrl(song);
   if (!url) return;
 
-  activeRequestId = song.requestId || String(song.id || "");
+  const requestId = song.requestId || String(song.id || "");
+  const currentSrc = audio.getAttribute("src") || "";
+  activeRequestId = requestId;
   audio.volume = latestState?.settings?.playerVolume ?? 0.75;
   audio.preload = "auto";
-  audio.src = url;
-  audio.load();
+  stabilizeAudioPlayback();
+  if (currentSrc !== url) {
+    audio.src = url;
+    audio.load();
+  }
 
   const shouldAutoplay = latestState?.settings?.autoplay !== false;
   if (shouldAutoplay) {
@@ -350,14 +364,17 @@ audio.addEventListener("ended", () => {
 
 audio.addEventListener("loadedmetadata", updateProgress);
 audio.addEventListener("timeupdate", updateProgress);
-audio.addEventListener("waiting", () => showStatus(""));
+audio.addEventListener("waiting", () => showStatus(text.buffering));
+audio.addEventListener("stalled", () => showStatus(text.buffering));
 audio.addEventListener("canplay", () => showStatus(""));
 audio.addEventListener("canplaythrough", () => showStatus(""));
 audio.addEventListener("playing", () => {
   showStatus("");
+  stabilizeAudioPlayback();
   updatePlayButton();
 });
 audio.addEventListener("pause", updatePlayButton);
+audio.addEventListener("ratechange", stabilizeAudioPlayback);
 
 socket.on("queue:state", (state) => {
   latestState = state;
@@ -376,7 +393,7 @@ socket.on("queue:state", (state) => {
   if (!activeRequestId) {
     playSong(state.current);
   } else if (activeRequestId !== requestId) {
-    activeRequestId = requestId;
+    playSong(state.current);
   }
 });
 
@@ -416,6 +433,7 @@ document.fonts?.ready
   })
   .catch(() => {});
 setTransportButton(nextSongButton, text.nextGlyph, "\u8df3\u5230\u4e0b\u4e00\u9996");
+stabilizeAudioPlayback();
 updatePlayButton();
 fetch("/api/appearance")
   .then((response) => response.json())
