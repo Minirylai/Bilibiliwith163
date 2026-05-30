@@ -1926,6 +1926,38 @@ input {
   line-height: 1.35;
 }
 
+.ncm-quality-form {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 1fr) minmax(130px, auto);
+  gap: 10px;
+  align-items: end;
+}
+
+.ncm-quality-form label {
+  display: grid;
+  gap: 6px;
+  color: rgba(248, 251, 255, 0.88);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ncm-quality-form .panel-note {
+  margin: 0 0 8px;
+  white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+  .ncm-quality-form {
+    grid-template-columns: 1fr;
+  }
+
+  .ncm-quality-form .panel-note {
+    margin: 0;
+    white-space: normal;
+  }
+}
+
 .editor-preview .preview-heading-row {
   width: 100%;
   margin: 0 0 14px !important;

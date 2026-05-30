@@ -9,6 +9,10 @@ const ncmLoginStatus = document.getElementById("ncm-login-status");
 const ncmLoginQr = document.getElementById("ncm-login-qr");
 const ncmLoginQrImg = document.getElementById("ncm-login-qr-img");
 const ncmLoginQrTip = document.getElementById("ncm-login-qr-tip");
+const ncmQualityForm = document.getElementById("ncm-quality-form");
+const ncmPlaybackQuality = document.getElementById("ncm-playback-quality");
+const ncmCacheQuality = document.getElementById("ncm-cache-quality");
+const ncmQualityState = document.getElementById("ncm-quality-state");
 const roomForm = document.getElementById("room-form");
 const roomIdInput = document.getElementById("room-id-input");
 const roomSaveState = document.getElementById("room-save-state");
@@ -572,6 +576,52 @@ function renderNcmLoginStatus(status) {
   ncmLoginStatus.textContent = "未登录网易云，会员歌曲只能按游客权限尝试播放";
 }
 
+function setNcmQualityState(text, tone = "") {
+  ncmQualityState.textContent = text;
+  ncmQualityState.className = tone ? `panel-note ${tone}` : "panel-note";
+}
+
+function fillNcmQualitySelect(select, options = [], value = "") {
+  select.innerHTML = options
+    .map((option) => `<option value="${escapeHtml(option.value)}">${escapeHtml(option.label)}</option>`)
+    .join("");
+  select.value = value;
+}
+
+function renderNcmQuality(payload) {
+  fillNcmQualitySelect(ncmPlaybackQuality, payload.options, payload.playbackQuality);
+  fillNcmQualitySelect(ncmCacheQuality, payload.options, payload.cacheQuality);
+  setNcmQualityState("播放优先流畅", "ok-text");
+}
+
+async function loadNcmQuality() {
+  try {
+    renderNcmQuality(await getJson("/api/ncm/quality"));
+  } catch (error) {
+    setNcmQualityState(`读取音质失败：${error.message}`, "bad-text");
+  }
+}
+
+async function saveNcmQuality() {
+  setNcmQualityState("音质保存中...", "");
+  ncmPlaybackQuality.disabled = true;
+  ncmCacheQuality.disabled = true;
+  try {
+    renderNcmQuality(
+      await postJson("/api/ncm/quality", {
+        cacheQuality: ncmCacheQuality.value,
+        playbackQuality: ncmPlaybackQuality.value,
+      }),
+    );
+    addEvent(`网易云音质：播放 ${ncmPlaybackQuality.value} / 缓存 ${ncmCacheQuality.value}`, "ok");
+  } catch (error) {
+    setNcmQualityState(`音质保存失败：${error.message}`, "bad-text");
+  } finally {
+    ncmPlaybackQuality.disabled = false;
+    ncmCacheQuality.disabled = false;
+  }
+}
+
 async function refreshNcmLoginStatus() {
   try {
     renderNcmLoginStatus(await getJson("/api/ncm/login/status"));
@@ -644,6 +694,7 @@ document.getElementById("ncm-login-logout").addEventListener("click", async () =
     addEvent(`网易云退出失败：${error.message}`, "bad");
   }
 });
+ncmQualityForm.addEventListener("change", saveNcmQuality);
 roomForm.addEventListener("submit", (event) => {
   event.preventDefault();
   saveRoomConfig();
@@ -687,6 +738,7 @@ socket.on("appearance:state", (state) => {
   fillAppearanceControls(state);
 });
 socket.on("bilibili:status", renderBilibiliStatus);
+socket.on("ncm:quality", renderNcmQuality);
 socket.on("danmaku", (danmaku) => addEvent(`${danmaku.user.name}: ${danmaku.text}`));
 socket.on("request:received", (request) => addEvent(`收到点歌：${request.user.name} / ${request.keyword}`, "ok"));
 socket.on("request:accepted", (item) => addEvent(`已加入：${item.name} - ${item.artists}`, "ok"));
@@ -698,3 +750,4 @@ populateFontSelects();
 loadRoomConfig();
 loadAppearance();
 refreshNcmLoginStatus();
+loadNcmQuality();

@@ -24,7 +24,15 @@ const parseCommands = (value) => {
     .filter(Boolean);
 };
 
+const qualityOptions = ["standard", "higher", "exhigh", "lossless", "hires"];
+
+const toQuality = (value, fallback = "standard") => {
+  const source = String(value || "").trim().toLowerCase();
+  return qualityOptions.includes(source) ? source : fallback;
+};
+
 const minRequestIntervalMs = toNonNegativeInteger(process.env.MIN_REQUEST_INTERVAL_MS, 8000);
+const legacyNcmQuality = toQuality(process.env.NCM_QUALITY, "standard");
 
 const config = {
   port: toNumber(process.env.PORT, 3888),
@@ -40,7 +48,10 @@ const config = {
     toNonNegativeInteger(process.env.USER_COOLDOWN_TTL_MS, 60 * 60 * 1000),
   ),
   playerVolume: Math.min(1, Math.max(0, toNumber(process.env.PLAYER_VOLUME, 0.75))),
-  ncmQuality: process.env.NCM_QUALITY || "standard",
+  ncmQuality: legacyNcmQuality,
+  ncmPlaybackQuality: toQuality(process.env.NCM_PLAYBACK_QUALITY, legacyNcmQuality),
+  ncmCacheQuality: toQuality(process.env.NCM_CACHE_QUALITY, legacyNcmQuality),
+  ncmQualityOptions: qualityOptions,
   biliProtover: toNonNegativeInteger(process.env.BILI_PROTO_VERSION, 3),
   allowDuplicates: toBoolean(process.env.ALLOW_DUPLICATES, false),
   autoplay: toBoolean(process.env.AUTOPLAY, true),

@@ -1,4 +1,5 @@
 const fs = require("fs");
+const path = require("path");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -21,6 +22,13 @@ let bilibiliLive = null;
 let activeBilibiliSession = 0;
 const wallpaperDir = paths.picDir;
 const envPath = paths.envPath;
+const qualityLabels = {
+  standard: "标准（最流畅）",
+  higher: "较高",
+  exhigh: "极高",
+  lossless: "无损",
+  hires: "Hi-Res",
+};
 
 app.use(express.json({ limit: "20mb" }));
 app.use(express.static(config.publicDir));
@@ -39,6 +47,22 @@ function writeEnvValue(key, value) {
   }
 
   fs.writeFileSync(envPath, content, "utf8");
+}
+
+function qualityPayload() {
+  return {
+    cacheQuality: config.ncmCacheQuality,
+    options: config.ncmQualityOptions.map((value) => ({
+      label: qualityLabels[value] || value,
+      value,
+    })),
+    playbackQuality: config.ncmPlaybackQuality,
+  };
+}
+
+function normalizeQuality(value, fallback) {
+  const source = String(value || "").trim().toLowerCase();
+  return config.ncmQualityOptions.includes(source) ? source : fallback;
 }
 
 async function startBilibili(roomId = config.roomId) {
@@ -213,6 +237,31 @@ app.post("/api/ncm/logout", async (req, res) => {
   }
 });
 
+app.get("/api/ncm/quality", (req, res) => {
+  res.json(qualityPayload());
+});
+
+app.post("/api/ncm/quality", (req, res) => {
+  try {
+    const playbackQuality = normalizeQuality(req.body?.playbackQuality, config.ncmPlaybackQuality);
+    const cacheQuality = normalizeQuality(req.body?.cacheQuality, config.ncmCacheQuality);
+
+    config.ncmPlaybackQuality = playbackQuality;
+    config.ncmCacheQuality = cacheQuality;
+    config.ncmQuality = playbackQuality;
+    process.env.NCM_PLAYBACK_QUALITY = playbackQuality;
+    process.env.NCM_CACHE_QUALITY = cacheQuality;
+    process.env.NCM_QUALITY = playbackQuality;
+    writeEnvValue("NCM_PLAYBACK_QUALITY", playbackQuality);
+    writeEnvValue("NCM_CACHE_QUALITY", cacheQuality);
+    writeEnvValue("NCM_QUALITY", playbackQuality);
+    io.emit("ncm:quality", qualityPayload());
+    res.json(qualityPayload());
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 app.get("/api/cache", async (req, res) => {
   try {
     res.json(await cacheStats());
@@ -315,6 +364,7 @@ app.post("/api/reset", (req, res) => {
 io.on("connection", (socket) => {
   socket.emit("queue:state", queue.publicState());
   socket.emit("appearance:state", appearance.loadAppearance());
+  socket.emit("ncm:quality", qualityPayload());
   if (bilibiliStatus) {
     socket.emit("bilibili:status", bilibiliStatus);
   }
@@ -326,6 +376,7 @@ const forwardEvents = [
   "log",
   "player:idle",
   "player:play",
+  "ncm:quality",
   "appearance:state",
   "queue:added",
   "queue:state",

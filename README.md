@@ -110,7 +110,9 @@ REQUEST_COMMANDS=点歌,点播,网易云
 | `MIN_REQUEST_INTERVAL_MS` | `8000` | 同用户点歌冷却 |
 | `USER_COOLDOWN_TTL_MS` | `3600000` | 用户冷却记录 TTL |
 | `PLAYER_VOLUME` | `0.75` | 播放器音量 |
-| `NCM_QUALITY` | `standard` | 网易云音质 |
+| `NCM_QUALITY` | `standard` | 兼容旧配置的网易云音质 |
+| `NCM_PLAYBACK_QUALITY` | `standard` | 播放音质，缓存未完成时用于即时播放，建议优先流畅 |
+| `NCM_CACHE_QUALITY` | `standard` | 缓存音质，后台落盘和完整本地缓存播放使用 |
 | `NCM_COOKIE` | 空 | 网易云登录 Cookie |
 | `ALLOW_DUPLICATES` | `false` | 是否允许重复歌曲 |
 | `AUTOPLAY` | `true` | 是否自动播放 |
@@ -133,6 +135,8 @@ REQUEST_COMMANDS=点歌,点播,网易云
 | `POST` | `/api/reset` | 停止并重置 |
 | `GET` | `/api/search` | 搜索网易云歌曲 |
 | `GET` | `/api/audio/:requestId` | 播放本地代理音频 |
+| `GET` | `/api/ncm/quality` | 读取网易云播放/缓存音质 |
+| `POST` | `/api/ncm/quality` | 修改网易云播放/缓存音质并写入 `.env` |
 | `GET` | `/api/cache` | 查看缓存统计 |
 | `POST` | `/api/cache/cleanup` | 清理缓存 |
 | `GET` | `/api/bilibili/room` | 查看当前房间 |

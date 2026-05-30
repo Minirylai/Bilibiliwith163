@@ -20,7 +20,7 @@ function createRequestId() {
 }
 
 function extensionFor(item) {
-  const type = item.playback?.type || "";
+  const type = item.cachePlayback?.type || item.playback?.type || "";
   if (/flac/i.test(type)) return "flac";
   if (/m4a|aac/i.test(type)) return "m4a";
   return "mp3";
@@ -44,8 +44,9 @@ function safeFilePart(value, fallback) {
 
 function cacheKeyFor(item) {
   const songId = item?.id || "unknown";
-  const level = item?.playback?.level || config.ncmQuality || "standard";
-  const type = item?.playback?.type || extensionFor(item);
+  const cachePlayback = item?.cachePlayback || item?.playback || {};
+  const level = cachePlayback.level || config.ncmCacheQuality || config.ncmQuality || "standard";
+  const type = cachePlayback.type || extensionFor(item);
   return `${songId}-${level}-${type}`.toLowerCase();
 }
 
@@ -53,19 +54,21 @@ function cacheFileNameFor(item, extension) {
   const songId = safeFilePart(item?.id, "unknown-id");
   const name = safeFilePart(item?.name, "unknown-song");
   const artists = safeFilePart(item?.artists, "unknown-artist");
-  const level = safeFilePart(item?.playback?.level || config.ncmQuality, "standard");
+  const level = safeFilePart(item?.cachePlayback?.level || item?.playback?.level || config.ncmCacheQuality || config.ncmQuality, "standard");
   return `${songId} - ${name} - ${artists} [${level}].${extension}`;
 }
 
 function entryForItem(item) {
   const extension = extensionFor(item);
   const cacheKey = cacheKeyFor(item);
+  const cachePlayback = item.cachePlayback || item.playback;
   const filePath = path.join(cacheDir, cacheFileNameFor(item, extension));
   return {
     cacheKey,
     contentType: contentTypeFor(extension),
     filePath,
-    remoteUrl: item.playback.url,
+    playbackRemoteUrl: item.playback.url,
+    remoteUrl: cachePlayback.url,
   };
 }
 
@@ -349,7 +352,7 @@ async function proxyRemoteAudio(req, res, entry) {
     headers.Range = req.headers.range;
   }
 
-  const response = await fetch(entry.remoteUrl, { headers });
+  const response = await fetch(entry.playbackRemoteUrl || entry.remoteUrl, { headers });
   if (!response.ok || !response.body) {
     throw new Error(`Audio proxy failed: ${response.status} ${response.statusText}`);
   }

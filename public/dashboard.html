@@ -43,6 +43,17 @@
             <button id="ncm-login-refresh" type="button">刷新状态</button>
             <button id="ncm-login-logout" type="button">退出登录</button>
           </div>
+          <form id="ncm-quality-form" class="ncm-quality-form">
+            <label>
+              播放音质
+              <select id="ncm-playback-quality"></select>
+            </label>
+            <label>
+              缓存音质
+              <select id="ncm-cache-quality"></select>
+            </label>
+            <span id="ncm-quality-state" class="panel-note">播放优先流畅</span>
+          </form>
           <div id="ncm-login-qr" class="ncm-login-qr" hidden>
             <img id="ncm-login-qr-img" alt="网易云二维码登录" />
             <p id="ncm-login-qr-tip">请用网易云音乐 App 扫码确认登录</p>

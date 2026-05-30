@@ -638,3 +638,54 @@
 是否更新 ARCHITECTURE：是，补充缓存文件命名、复用、引用释放和回收逻辑。
 
 提交哈希：`12a97e0 fix: reuse and release audio cache files`
+
+## 2026-05-30 播放和缓存音质模式
+
+任务 ID：NCM-QUALITY-MODES-20260530
+
+目标：
+
+- 播放优先保证流畅度。
+- 增加播放音质和缓存音质的独立设置。
+- 在控制台网易云区域体现音质设置，并支持运行时修改。
+
+范围：
+
+- `.env.example`
+- `README.md`
+- `src/config.js`
+- `src/ncmApi.js`
+- `src/audioCache.js`
+- `src/server.js`
+- `public/dashboard.html`
+- `public/dashboard.js`
+- `public/style.css`
+- `docs/ARCHITECTURE.md`
+- `docs/TODO.md`
+- `docs/WORK_HISTORY.md`
+
+关键决策：
+
+- 新增 `NCM_PLAYBACK_QUALITY` 和 `NCM_CACHE_QUALITY`，并保留 `NCM_QUALITY` 作为旧配置兼容。
+- 播放音质用于缓存未完成时的即时远端代理播放，默认 `standard`，优先保证直播流畅。
+- 缓存音质用于后台落盘缓存；完整本地缓存存在时优先读取本地缓存。
+- 控制台新增“播放音质”和“缓存音质”两个下拉框，通过 `/api/ncm/quality` 读取和保存，保存后写入 `.env`。
+- 新音质设置只影响后续新点歌，已在队列中的歌曲不强制切换，避免播放中断。
+
+验证命令和结果：
+
+- `node --check src\config.js; node --check src\ncmApi.js; node --check src\audioCache.js; node --check src\server.js; node --check public\dashboard.js; node --check public\app.js`：通过。
+- `git diff --check`：通过。
+- 本地 Node 行为脚本：验证缓存预热使用缓存音质 URL，完整缓存存在后 `/api/audio/:requestId` 返回缓存音质内容，并能正常释放缓存文件：通过。
+- `PORT=3892` 临时启动服务，验证 `GET /dashboard.html` 返回 200，`GET /api/ncm/quality` 返回 `playbackQuality=standard`、`cacheQuality=standard`、`options=5`：通过。
+
+未完成边界：
+
+- 未运行 `npm test`，因为该命令会访问网易云和 B 站外部接口；本轮已覆盖本地语法和缓存路径行为。
+- 已在队列中的歌曲保留入队时的音质 URL；需要切换音质时建议切到下一首或重新点歌。
+
+是否更新 TODO：是，补充音质模式已实现能力。
+
+是否更新 ARCHITECTURE：是，补充网易云音质策略和 API。
+
+提交哈希：待提交后补充。

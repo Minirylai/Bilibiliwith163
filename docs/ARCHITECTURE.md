@@ -109,7 +109,7 @@ remote: origin https://github.com/Minirylai/Bilibiliwith163.git
 | B 站房间连接 | 启动服务、`GET /api/bilibili/room` | `src/server.js`、`src/bilibili.js`、`src/config.js` | 启动时自动连接 `.env` 中的房间号，并向前端广播连接、心跳、最近弹幕和错误状态。 |
 | B 站房间切换 | 控制台房间表单、`POST /api/bilibili/room` | `src/server.js`、`src/bilibili.js` | 可运行时切房并写回 `.env`；当前没有自动重连，连接失败时存在内存状态先更新的风险。 |
 | 弹幕点歌识别 | 直播间 `DANMU_MSG` | `src/bilibili.js`、`src/bilibiliHelpers.js`、`src/songRequestParser.js`、`src/queue.js` | 支持 `REQUEST_COMMANDS` 配置的指令前缀，解析出关键词后进入冷却、搜索和入队流程。 |
-| 网易云搜索与解析 | 弹幕点歌、`GET /api/search`、`POST /api/request` | `src/ncmApi.js`、`src/ncmAuth.js` | 使用网易云增强 API 搜索、检查可播性并获取播放地址；手动点歌 API 已存在，但控制台没有对应 UI。 |
+| 网易云搜索与解析 | 弹幕点歌、`GET /api/search`、`POST /api/request` | `src/ncmApi.js`、`src/ncmAuth.js` | 使用网易云增强 API 搜索、检查可播性并获取播放地址；播放音质和缓存音质可独立配置，优先保证直播播放流畅。 |
 | 网易云扫码登录 | 控制台网易云登录区、`/api/ncm/login/*` | `src/ncmAuth.js`、`src/server.js`、`public/dashboard.js` | 生成二维码、轮询扫码状态、保存或清除 `NCM_COOKIE`；会员歌曲仍取决于账号权限和接口返回。 |
 | 队列与播放状态 | `GET /api/state`、`POST /api/next`、`POST /api/skip`、`POST /api/clear`、`POST /api/reset`、`POST /api/queue/:requestId/remove` | `src/queue.js`、`src/eventBus.js`、`src/server.js` | 维护当前播放、候选队列和历史记录，并通过 Socket.IO 推送 `queue:state`、`player:play`、`player:idle`。 |
 | 音频缓存与播放代理 | `GET /api/audio/:requestId`、`GET /api/cache`、`POST /api/cache/cleanup` | `src/audioCache.js`、`src/queue.js`、`src/server.js` | 为每次点歌生成本地播放代理地址，按歌曲生成可读缓存文件名，同歌复用缓存，支持 HTTP Range、缓存清理和退出歌单后的引用释放回收。 |
@@ -258,6 +258,15 @@ flowchart LR
 
 登录后会员歌曲能否播放取决于账号权限和网易云接口返回结果。项目不会绕过版权或会员限制。
 
+## 网易云音质策略
+
+项目将网易云音质拆成两个运行时设置：
+
+- `NCM_PLAYBACK_QUALITY`：播放音质。缓存未完成时，`/api/audio/:requestId` 会用这个音质对应的远端 URL 直接流式代理给 OBS，默认 `standard`，优先保证直播流畅。
+- `NCM_CACHE_QUALITY`：缓存音质。后台预热和本地缓存文件使用这个音质；完整缓存存在时优先读取本地缓存。
+
+控制台通过 `GET /api/ncm/quality` 和 `POST /api/ncm/quality` 读写这两个设置，并同步写入 `.env`。新设置只影响后续新点歌，已经在队列中的歌曲保持其入队时解析出的播放 URL 和缓存 URL，避免播放中途切换。
+
 ## 音频缓存逻辑
 
 `src/audioCache.js` 负责：
@@ -353,6 +362,8 @@ OBS 源不直接播放网易云外链，而是播放：
 | `POST` | `/api/ncm/login/qr` | 创建二维码登录 |
 | `GET` | `/api/ncm/login/qr/:key` | 查询扫码状态 |
 | `POST` | `/api/ncm/logout` | 退出网易云 |
+| `GET` | `/api/ncm/quality` | 读取网易云播放/缓存音质设置 |
+| `POST` | `/api/ncm/quality` | 修改网易云播放/缓存音质并写入 `.env` |
 | `GET` | `/api/cache` | 缓存统计 |
 | `POST` | `/api/cache/cleanup` | 清理缓存 |
 | `POST` | `/api/request` | 手动提交点歌请求 |
@@ -395,7 +406,9 @@ OBS 源不直接播放网易云外链，而是播放：
 | `MIN_REQUEST_INTERVAL_MS` | `8000` | 同用户点歌冷却 |
 | `USER_COOLDOWN_TTL_MS` | `3600000` | 用户冷却记录 TTL，实际值不会小于 `MIN_REQUEST_INTERVAL_MS` |
 | `PLAYER_VOLUME` | `0.75` | 播放器音量 |
-| `NCM_QUALITY` | `standard` | 网易云音质 |
+| `NCM_QUALITY` | `standard` | 兼容旧配置的网易云音质 |
+| `NCM_PLAYBACK_QUALITY` | `standard` | 播放音质，缓存未完成时用于即时播放 |
+| `NCM_CACHE_QUALITY` | `standard` | 缓存音质，后台落盘和完整本地缓存播放使用 |
 | `BILI_PROTO_VERSION` | `3` | B 站弹幕协议版本 |
 | `ALLOW_DUPLICATES` | `false` | 是否允许重复歌曲 |
 | `AUTOPLAY` | `true` | 是否自动播放 |
