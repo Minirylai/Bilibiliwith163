@@ -409,4 +409,4 @@
 
 是否更新 ARCHITECTURE：是，新增第三方引用入口说明。
 
-提交哈希：待提交后补充。
+提交哈希：`c2119c0 feat: add library entrypoint`
