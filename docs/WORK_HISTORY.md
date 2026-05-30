@@ -591,4 +591,4 @@
 
 是否更新 ARCHITECTURE：是，补充缓存未完成时的远端流式代理行为。
 
-提交哈希：待提交后补充。
+提交哈希：`8076f25 fix: stream audio on cache miss`
