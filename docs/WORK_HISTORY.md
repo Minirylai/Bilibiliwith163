@@ -808,4 +808,4 @@
 
 是否更新 ARCHITECTURE：是，补充 caxa 打包路线和运行根目录逻辑。
 
-提交哈希：待提交后补充。
+提交哈希：`84573ea build: add caxa executable packaging`
