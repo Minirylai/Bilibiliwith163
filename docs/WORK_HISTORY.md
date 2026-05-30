@@ -508,4 +508,4 @@
 
 是否更新 ARCHITECTURE：是，新增运行路径和 exe 打包说明。
 
-提交哈希：待提交后补充。
+提交哈希：`c852f30 build: add executable packaging setup`
