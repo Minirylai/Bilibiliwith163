@@ -57,6 +57,7 @@ docs/
 │  └─ watch-bilibili.js   # B 站弹幕监听调试脚本
 ├─ src/
 │  ├─ server.js           # HTTP + Socket.IO 入口
+│  ├─ index.js            # 第三方引用入口；无副作用导出解析/helper
 │  ├─ config.js           # 环境变量配置
 │  ├─ bilibili.js         # B 站直播间连接和弹幕处理
 │  ├─ bilibiliHelpers.js  # B 站命令、弹幕、地址、Cookie 辅助解析
@@ -115,6 +116,7 @@ remote: none
 | OBS 外观配置 | 控制台编辑器、`/api/appearance*` | `src/appearance.js`、`public/shared.js`、`public/dashboard.js`、`public/app.js`、`public/style.css` | 可调整尺寸、毛玻璃、字号、字体、颜色和播放器/候选框/播报栏圆角；当前配置与保存方案分别落盘到 `.cache/appearance.json` 和 `.cache/appearance.saved.json`。 |
 | 控制台监控与控制 | `/dashboard.html` | `public/dashboard.html`、`public/shared.js`、`public/dashboard.js`、`src/server.js` | 展示当前播放、弹幕/请求日志、队列、房间状态，支持切歌、清空、停止、切房、网易云登录和外观编辑。 |
 | 控制台设置和壁纸能力 | `GET/POST /api/dashboard-settings`、`GET /api/wallpapers` | `src/dashboardSettings.js`、`src/server.js`、`public/dashboard.js`、`public/style.css` | 服务端保留设置和壁纸列表能力；当前前端主流程固定使用 `pic/fu.png`，播放器预览底图优先尝试 `pic/miku.png` 后回退 `pic/miku.jpg`。 |
+| 第三方引用 | `require("bilibiliwith163")` | `src/index.js`、`src/songRequestParser.js`、`src/bilibiliHelpers.js` | 包根入口无副作用，不启动 HTTP 服务或连接 B 站；导出点歌解析和 B 站消息辅助函数。 |
 | 本地模拟和调试 | `POST /api/mock-danmaku`、`npm run debug:bili`、`npm test` | `src/server.js`、`scripts/watch-bilibili.js`、`test/api-smoke.js` | 支持模拟弹幕、单独监听 B 站弹幕，以及对网易云和 B 站外部 API 做冒烟检查。 |
 
 ## 静态架构检查结论
@@ -215,6 +217,22 @@ flowchart LR
 - `clientBuvid()`：从 B 站 Cookie 容器中读取可用 buvid。
 
 `src/bilibili.js` 和 `scripts/watch-bilibili.js` 都应使用该 helper，避免协议适配时出现正式链路和调试链路不一致。
+
+## 第三方引用入口
+
+`package.json` 的 `main` 指向 `src/index.js`，不是 `src/server.js`。第三方程序执行 `require("bilibiliwith163")` 时不会启动 HTTP 服务，也不会连接 B 站直播间。
+
+当前对外导出：
+
+- `parseSongRequest()`
+- `getBaseCommand()`
+- `danmakuFromMessage()`
+- `hostToAddress()`
+- `cookieValue()`
+- `clientBuvid()`
+- `bilibiliHelpers`
+
+服务运行入口仍由 `npm start` 调用 `node src/server.js`。
 
 ## 网易云登录逻辑
 

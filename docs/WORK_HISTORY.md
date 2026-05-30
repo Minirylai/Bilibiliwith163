@@ -357,4 +357,56 @@
 
 是否更新 ARCHITECTURE：否，本轮未改变架构。
 
+提交哈希：`1a8caf6 docs: rewrite open source readme`
+
+## 2026-05-30 T19 第三方引用入口
+
+任务 ID：T19
+
+目标：
+
+- 让第三方程序可以安全 `require("bilibiliwith163")`。
+- 避免包根入口导入时启动 HTTP 服务或连接 B 站。
+- 在 README 中提供最小导入示例。
+
+范围：
+
+- `package.json`
+- `src/index.js`
+- `README.md`
+- `docs/TODO.md`
+- `docs/ARCHITECTURE.md`
+- `docs/WORK_HISTORY.md`
+
+关键决策：
+
+- `package.json` 的 `main` 改为 `src/index.js`，`npm start` 仍显式执行 `node src/server.js`。
+- 包根入口只导出无服务启动副作用的点歌解析和 B 站消息辅助函数。
+- 暂不重构 `src/server.js` 为 `createServer()`，避免在开源前引入更大服务生命周期改动。
+
+对外导出：
+
+- `parseSongRequest`
+- `getBaseCommand`
+- `danmakuFromMessage`
+- `hostToAddress`
+- `cookieValue`
+- `clientBuvid`
+- `bilibiliHelpers`
+
+验证命令和结果：
+
+- `node --check src\index.js; node --check src\songRequestParser.js; node --check src\bilibiliHelpers.js; node --check src\server.js`：通过。
+- `node -e "const lib = require('./'); ..."`：通过，输出导出键 `bilibiliHelpers,clientBuvid,cookieValue,danmakuFromMessage,getBaseCommand,hostToAddress,parseSongRequest`，并验证 `parseSongRequest()` 可解析点歌文本。
+- `git diff --check`：通过。
+
+未完成边界：
+
+- 可执行软件打包仍留给 T21。
+- 如果后续需要外部嵌入完整 HTTP 服务，应另行拆 `src/server.js` 的 `createServer()` 工厂。
+
+是否更新 TODO：是，T19 已从当前待办列表移除，并补入已实现能力。
+
+是否更新 ARCHITECTURE：是，新增第三方引用入口说明。
+
 提交哈希：待提交后补充。

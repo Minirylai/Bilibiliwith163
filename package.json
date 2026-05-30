@@ -2,7 +2,12 @@
   "name": "bilibiliwith163",
   "version": "1.0.0",
   "description": "Bilibili live danmaku song requests for an OBS browser source.",
-  "main": "src/server.js",
+  "main": "src/index.js",
+  "exports": {
+    ".": "./src/index.js",
+    "./song-request-parser": "./src/songRequestParser.js",
+    "./bilibili-helpers": "./src/bilibiliHelpers.js"
+  },
   "scripts": {
     "start": "node src/server.js",
     "dev": "node src/server.js",

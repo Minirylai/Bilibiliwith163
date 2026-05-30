@@ -141,7 +141,31 @@ REQUEST_COMMANDS=点歌,点播,网易云
 
 ## 第三方引用
 
-第三方引用入口将在下一步开放。当前 `npm start` 可以作为独立服务运行；在 T19 完成前，不建议第三方程序直接 `require()` 包根入口，因为旧入口会启动服务。
+包根入口是无副作用的 CommonJS 模块，第三方程序可以安全导入解析工具；导入包不会启动 HTTP 服务，也不会连接 B 站。
+
+```js
+const { parseSongRequest, danmakuFromMessage } = require("bilibiliwith163");
+
+const request = parseSongRequest("点歌 晴天 周杰伦", ["点歌", "点播", "网易云"]);
+console.log(request);
+// { command: "点歌", keyword: "晴天 周杰伦" }
+```
+
+可用导出：
+
+- `parseSongRequest(text, commands)`：解析弹幕点歌指令。
+- `getBaseCommand(data)`：提取 B 站消息基础命令。
+- `danmakuFromMessage(data)`：从 B 站弹幕消息中提取文本和用户信息。
+- `hostToAddress(host)`：把 B 站 host 配置转换为 WebSocket 地址。
+- `cookieValue(cookie, name)`：从 Cookie 字符串读取指定键。
+- `clientBuvid(cookies)`：从 B 站 Cookie 容器中读取可用 buvid。
+- `bilibiliHelpers`：以上 B 站辅助函数的命名空间导出。
+
+服务启动入口仍然是：
+
+```powershell
+npm start
+```
 
 ## 测试和调试
 
