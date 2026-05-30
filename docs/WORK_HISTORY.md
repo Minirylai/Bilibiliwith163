@@ -755,4 +755,4 @@
 
 是否更新 ARCHITECTURE：是，补充后端本地播放模块、API、Socket 事件和 OBS 源职责变化。
 
-提交哈希：待提交后补充。
+提交哈希：`9b802c1 feat: play audio through local backend`
