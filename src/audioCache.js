@@ -5,37 +5,142 @@ const path = require("path");
 const { pipeline } = require("stream/promises");
 const { Readable } = require("stream");
 const config = require("./config");
+const bus = require("./eventBus");
 const paths = require("./runtimePaths");
 
 const cacheDir = paths.audioCacheDir;
 const registry = new Map();
 const downloads = new Map();
+const cacheRefs = new Map();
+const cacheEntries = new Map();
+const pendingDeletes = new Map();
 
 function createRequestId() {
   return crypto.randomUUID();
 }
 
 function extensionFor(item) {
-  const type = item.playback?.type || "";
+  const type = item.cachePlayback?.type || item.playback?.type || "";
   if (/flac/i.test(type)) return "flac";
   if (/m4a|aac/i.test(type)) return "m4a";
   return "mp3";
 }
 
+function contentTypeFor(extension) {
+  if (extension === "flac") return "audio/flac";
+  if (extension === "m4a") return "audio/mp4";
+  return "audio/mpeg";
+}
+
+function safeFilePart(value, fallback) {
+  const source = String(value || fallback || "")
+    .normalize("NFKC")
+    .replace(/[<>:"/\\|?*\x00-\x1f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  const safe = source.replace(/[. ]+$/g, "");
+  return (safe || fallback || "unknown").slice(0, 72);
+}
+
+function cacheKeyFor(item) {
+  const songId = item?.id || "unknown";
+  const cachePlayback = item?.cachePlayback || item?.playback || {};
+  const level = cachePlayback.level || config.ncmCacheQuality || config.ncmQuality || "standard";
+  const type = cachePlayback.type || extensionFor(item);
+  return `${songId}-${level}-${type}`.toLowerCase();
+}
+
+function cacheFileNameFor(item, extension) {
+  const songId = safeFilePart(item?.id, "unknown-id");
+  const name = safeFilePart(item?.name, "unknown-song");
+  const artists = safeFilePart(item?.artists, "unknown-artist");
+  const level = safeFilePart(item?.cachePlayback?.level || item?.playback?.level || config.ncmCacheQuality || config.ncmQuality, "standard");
+  return `${songId} - ${name} - ${artists} [${level}].${extension}`;
+}
+
+function entryForItem(item) {
+  const extension = extensionFor(item);
+  const cacheKey = cacheKeyFor(item);
+  const cachePlayback = item.cachePlayback || item.playback;
+  const filePath = path.join(cacheDir, cacheFileNameFor(item, extension));
+  return {
+    cacheKey,
+    contentType: contentTypeFor(extension),
+    filePath,
+    playbackRemoteUrl: item.playback.url,
+    remoteUrl: cachePlayback.url,
+  };
+}
+
 function registerSong(item) {
   if (!item?.requestId || !item?.playback?.url) return;
 
-  const extension = extensionFor(item);
-  const filePath = path.join(cacheDir, `${item.requestId}.${extension}`);
-  const contentType = extension === "flac" ? "audio/flac" : extension === "m4a" ? "audio/mp4" : "audio/mpeg";
+  const entry = entryForItem(item);
+  const nextRefs = (cacheRefs.get(entry.cacheKey) || 0) + 1;
 
-  registry.set(item.requestId, {
-    contentType,
-    filePath,
-    remoteUrl: item.playback.url,
-  });
+  clearPendingDelete(entry.cacheKey);
+  cacheRefs.set(entry.cacheKey, nextRefs);
+  cacheEntries.set(entry.cacheKey, entry);
+  registry.set(item.requestId, entry);
 
   warmSong(item.requestId).catch(() => {});
+}
+
+function clearPendingDelete(cacheKey) {
+  const timer = pendingDeletes.get(cacheKey);
+  if (!timer) return;
+  clearTimeout(timer);
+  pendingDeletes.delete(cacheKey);
+}
+
+function releaseSong(item) {
+  const requestId = typeof item === "string" ? item : item?.requestId;
+  if (!requestId) return;
+
+  const entry = registry.get(requestId);
+  if (!entry) return;
+
+  registry.delete(requestId);
+  const nextRefs = Math.max(0, (cacheRefs.get(entry.cacheKey) || 1) - 1);
+  if (nextRefs > 0) {
+    cacheRefs.set(entry.cacheKey, nextRefs);
+    return;
+  }
+
+  cacheRefs.delete(entry.cacheKey);
+  scheduleDelete(entry);
+}
+
+function scheduleDelete(entry, attempt = 0) {
+  clearPendingDelete(entry.cacheKey);
+  const timer = setTimeout(() => {
+    pendingDeletes.delete(entry.cacheKey);
+    deleteEntryFiles(entry).catch((error) => {
+      if (attempt < 5) {
+        scheduleDelete(entry, attempt + 1);
+        return;
+      }
+      bus.emit("log", {
+        level: "warn",
+        message: `Failed to delete audio cache ${path.basename(entry.filePath)}: ${error.message}`,
+      });
+    });
+  }, attempt === 0 ? 1500 : 3000);
+  pendingDeletes.set(entry.cacheKey, timer);
+}
+
+async function deleteEntryFiles(entry) {
+  if ((cacheRefs.get(entry.cacheKey) || 0) > 0 || downloads.has(entry.cacheKey)) return;
+
+  await Promise.all([
+    fsp.unlink(entry.filePath).catch((error) => {
+      if (error.code !== "ENOENT") throw error;
+    }),
+    fsp.unlink(`${entry.filePath}.tmp`).catch((error) => {
+      if (error.code !== "ENOENT") throw error;
+    }),
+  ]);
+  cacheEntries.delete(entry.cacheKey);
 }
 
 async function warmSong(requestId) {
@@ -44,15 +149,30 @@ async function warmSong(requestId) {
     throw new Error("Unknown audio request");
   }
 
-  if (downloads.has(requestId)) {
-    return downloads.get(requestId);
+  if (downloads.has(entry.cacheKey)) {
+    return downloads.get(entry.cacheKey);
   }
 
   const task = download(entry).finally(() => {
-    downloads.delete(requestId);
+    downloads.delete(entry.cacheKey);
+    if ((cacheRefs.get(entry.cacheKey) || 0) === 0) {
+      scheduleDelete(entry);
+    }
   });
-  downloads.set(requestId, task);
+  downloads.set(entry.cacheKey, task);
   return task;
+}
+
+async function cachedFile(entry) {
+  try {
+    const stat = await fsp.stat(entry.filePath);
+    if (stat.size > 0) {
+      return stat;
+    }
+  } catch {
+    // Cache miss.
+  }
+  return null;
 }
 
 async function download(entry) {
@@ -60,23 +180,24 @@ async function download(entry) {
     recursive: true,
   });
 
-  try {
-    const stat = await fsp.stat(entry.filePath);
-    if (stat.size > 0) return entry.filePath;
-  } catch {
-    // Cache miss.
-  }
+  const existing = await cachedFile(entry);
+  if (existing) return entry.filePath;
 
   const tmpPath = `${entry.filePath}.tmp`;
-  const response = await fetch(entry.remoteUrl);
-  if (!response.ok || !response.body) {
-    throw new Error(`Audio download failed: ${response.status} ${response.statusText}`);
-  }
+  try {
+    const response = await fetch(entry.remoteUrl);
+    if (!response.ok || !response.body) {
+      throw new Error(`Audio download failed: ${response.status} ${response.statusText}`);
+    }
 
-  await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(tmpPath));
-  await fsp.rename(tmpPath, entry.filePath);
-  await cleanupCache();
-  return entry.filePath;
+    await pipeline(Readable.fromWeb(response.body), fs.createWriteStream(tmpPath));
+    await fsp.rename(tmpPath, entry.filePath);
+    await cleanupCache();
+    return entry.filePath;
+  } catch (error) {
+    await fsp.unlink(tmpPath).catch(() => {});
+    throw error;
+  }
 }
 
 async function listCacheFiles() {
@@ -96,9 +217,9 @@ async function listCacheFiles() {
       if (!stat.isFile()) continue;
       files.push({
         filePath,
+        cacheKey: cacheKeyForFilePath(filePath),
         mtimeMs: stat.mtimeMs,
         name,
-        requestId: name.split(".")[0],
         size: stat.size,
       });
     } catch {
@@ -132,9 +253,9 @@ async function cleanupCache(options = {}) {
 
   while (files.length > 0 && (totalBytes > maxBytes || files.length > maxFiles)) {
     const file = files.shift();
-    if (downloads.has(file.requestId)) {
+    if ((cacheRefs.get(file.cacheKey) || 0) > 0 || downloads.has(file.cacheKey)) {
       files.push(file);
-      if (files.every((item) => downloads.has(item.requestId))) break;
+      if (files.every((item) => (cacheRefs.get(item.cacheKey) || 0) > 0 || downloads.has(item.cacheKey))) break;
       continue;
     }
 
@@ -156,6 +277,16 @@ async function cleanupCache(options = {}) {
     totalBytes,
     totalMb: Number((totalBytes / 1024 / 1024).toFixed(2)),
   };
+}
+
+function cacheKeyForFilePath(filePath) {
+  const resolved = path.resolve(filePath);
+  for (const [cacheKey, entry] of cacheEntries.entries()) {
+    if (path.resolve(entry.filePath) === resolved) {
+      return cacheKey;
+    }
+  }
+  return "";
 }
 
 function parseRange(rangeHeader, size) {
@@ -184,8 +315,12 @@ async function handleAudioRequest(req, res) {
   }
 
   try {
-    await warmSong(requestId);
-    const stat = await fsp.stat(entry.filePath);
+    const stat = await cachedFile(entry);
+    if (!stat) {
+      await proxyRemoteAudio(req, res, entry);
+      return;
+    }
+
     const range = parseRange(req.headers.range, stat.size);
 
     res.setHeader("Accept-Ranges", "bytes");
@@ -203,8 +338,69 @@ async function handleAudioRequest(req, res) {
     res.setHeader("Content-Length", stat.size);
     fs.createReadStream(entry.filePath).pipe(res);
   } catch (error) {
+    if (res.headersSent) {
+      res.destroy(error);
+      return;
+    }
     res.status(502).json({ error: error.message });
   }
+}
+
+async function playbackSourceForRequest(requestId, baseUrl = "") {
+  const entry = registry.get(requestId);
+  if (!entry) {
+    throw new Error("Unknown audio request");
+  }
+
+  const stat = await cachedFile(entry);
+  if (stat) {
+    return {
+      cached: true,
+      contentType: entry.contentType,
+      kind: "file",
+      path: entry.filePath,
+      size: stat.size,
+    };
+  }
+
+  const prefix = String(baseUrl || "").replace(/\/+$/g, "");
+  return {
+    cached: false,
+    contentType: entry.contentType,
+    kind: "url",
+    url: `${prefix}/api/audio/${encodeURIComponent(requestId)}`,
+  };
+}
+
+async function proxyRemoteAudio(req, res, entry) {
+  const headers = {};
+  if (req.headers.range) {
+    headers.Range = req.headers.range;
+  }
+
+  const response = await fetch(entry.playbackRemoteUrl || entry.remoteUrl, { headers });
+  if (!response.ok || !response.body) {
+    throw new Error(`Audio proxy failed: ${response.status} ${response.statusText}`);
+  }
+
+  const statusCode = response.status === 206 ? 206 : 200;
+  res.status(statusCode);
+  res.setHeader("Accept-Ranges", response.headers.get("accept-ranges") || "bytes");
+  res.setHeader("Content-Type", response.headers.get("content-type") || entry.contentType);
+  res.setHeader("Cache-Control", "private, max-age=300");
+
+  const contentLength = response.headers.get("content-length");
+  const contentRange = response.headers.get("content-range");
+  if (contentLength) res.setHeader("Content-Length", contentLength);
+  if (contentRange) res.setHeader("Content-Range", contentRange);
+  res.flushHeaders?.();
+
+  bus.emit("log", {
+    level: "info",
+    message: "Audio cache miss; streaming from remote source while cache warms.",
+  });
+
+  await pipeline(Readable.fromWeb(response.body), res);
 }
 
 module.exports = {
@@ -212,6 +408,8 @@ module.exports = {
   cleanupCache,
   createRequestId,
   handleAudioRequest,
+  playbackSourceForRequest,
   registerSong,
+  releaseSong,
   warmSong,
 };

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>B站弹幕点歌控制台</title>
-    <link rel="stylesheet" href="/style.css?v=dashboard-local-font-preview" />
+    <link rel="stylesheet" href="/style.css?v=dashboard-layout-player-install-fix" />
   </head>
   <body class="dashboard">
     <main class="dashboard-shell blog-dashboard">
@@ -17,6 +17,7 @@
         <div class="actions hero-actions">
           <div class="hero-button-row">
             <a class="ghost-link" href="/" target="_blank" rel="noreferrer">打开 OBS 源</a>
+            <button id="player-toggle" type="button" title="暂停或继续">暂停</button>
             <button id="skip" type="button" title="切歌">跳过</button>
             <button id="clear" type="button" title="清空待播队列">清空队列</button>
             <button id="reset" type="button" title="停止当前歌曲并清空">停止</button>
@@ -43,6 +44,17 @@
             <button id="ncm-login-refresh" type="button">刷新状态</button>
             <button id="ncm-login-logout" type="button">退出登录</button>
           </div>
+          <form id="ncm-quality-form" class="ncm-quality-form">
+            <label>
+              播放音质
+              <select id="ncm-playback-quality"></select>
+            </label>
+            <label>
+              缓存音质
+              <select id="ncm-cache-quality"></select>
+            </label>
+            <span id="ncm-quality-state" class="panel-note">播放优先流畅</span>
+          </form>
           <div id="ncm-login-qr" class="ncm-login-qr" hidden>
             <img id="ncm-login-qr-img" alt="网易云二维码登录" />
             <p id="ncm-login-qr-tip">请用网易云音乐 App 扫码确认登录</p>
@@ -54,7 +66,8 @@
         <div class="tool-panel glass-card current-panel">
           <h2>当前播放</h2>
           <div id="dash-current" class="empty">暂无歌曲</div>
-          <audio id="dash-audio" preload="none" hidden></audio>
+          <p id="player-state" class="panel-note">本地播放器待机</p>
+          <button id="player-install" type="button" hidden>一键安装播放器</button>
         </div>
         <div class="tool-panel glass-card">
           <h2>弹幕与请求</h2>

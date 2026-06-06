@@ -55,7 +55,7 @@ async function checkSongAvailable(id) {
   }
 }
 
-async function getSongUrl(id, level = config.ncmQuality) {
+async function getSongUrl(id, level = config.ncmPlaybackQuality || config.ncmQuality) {
   const response = await withTimeout(
     ncm.song_url_v1({
       id,
@@ -79,16 +79,23 @@ async function getSongUrl(id, level = config.ncmQuality) {
   };
 }
 
-async function resolveSong(keyword) {
+async function resolveSong(keyword, options = {}) {
+  const playbackQuality = options.playbackQuality || config.ncmPlaybackQuality || config.ncmQuality;
+  const cacheQuality = options.cacheQuality || config.ncmCacheQuality || playbackQuality;
   const songs = await searchSongs(keyword);
   for (const song of songs) {
     const available = await checkSongAvailable(song.id);
     if (!available) continue;
 
     try {
-      const playback = await getSongUrl(song.id);
+      const playback = await getSongUrl(song.id, playbackQuality);
+      let cachePlayback = playback;
+      if (cacheQuality !== playback.level) {
+        cachePlayback = await getSongUrl(song.id, cacheQuality).catch(() => playback);
+      }
       return {
         ...song,
+        cachePlayback,
         playback,
       };
     } catch {
