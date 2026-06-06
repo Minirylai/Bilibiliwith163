@@ -2,7 +2,11 @@ const fs = require("fs");
 const path = require("path");
 
 const projectRoot = path.resolve(__dirname, "..");
-const runtimeRoot = process.pkg ? path.dirname(process.execPath) : projectRoot;
+const runtimeRoot = process.env.BILIBILIWITH163_RUNTIME_ROOT
+  ? path.resolve(process.env.BILIBILIWITH163_RUNTIME_ROOT)
+  : process.pkg
+    ? path.dirname(process.execPath)
+    : projectRoot;
 
 function readableDir(name) {
   const externalPath = path.join(runtimeRoot, name);
@@ -20,6 +24,7 @@ module.exports = {
   dashboardSettingsPath: writablePath(".cache", "dashboard.json"),
   envPath: writablePath(".env"),
   picDir: readableDir("pic"),
+  playerDir: writablePath(".cache", "player"),
   projectRoot,
   publicDir: readableDir("public"),
   runtimeRoot,

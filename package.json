@@ -1,6 +1,6 @@
 {
   "name": "bilibiliwith163",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Bilibili live danmaku song requests for an OBS browser source.",
   "main": "src/index.js",
   "exports": {
@@ -15,6 +15,8 @@
     "start": "node src/server.js",
     "dev": "node src/server.js",
     "build:exe": "pkg src/server.js --targets node24-win-x64 --output dist/bilibiliwith163.exe",
+    "build:exe:caxa": "node scripts/build-caxa.mjs",
+    "build:release": "node scripts/build-release.mjs",
     "test": "node test/api-smoke.js",
     "debug:bili": "node scripts/watch-bilibili.js"
   },
@@ -29,6 +31,7 @@
   "type": "commonjs",
   "dependencies": {
     "@neteasecloudmusicapienhanced/api": "^4.32.1",
+    "7zip-bin": "^5.2.0",
     "bilibili-live-danmaku": "^0.7.15",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
@@ -36,7 +39,9 @@
     "ws": "^8.20.1"
   },
   "devDependencies": {
-    "@yao-pkg/pkg": "^6.20.0"
+    "@appthreat/caxa": "^3.0.1",
+    "@yao-pkg/pkg": "^6.20.0",
+    "archiver": "^8.0.0"
   },
   "pkg": {
     "assets": [

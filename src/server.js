@@ -1,4 +1,5 @@
 const fs = require("fs");
+const path = require("path");
 const express = require("express");
 const http = require("http");
 const { Server } = require("socket.io");
@@ -11,6 +12,8 @@ const { connectBilibili, handleDanmaku } = require("./bilibili");
 const { resolveSong, searchSongs } = require("./ncmApi");
 const ncmAuth = require("./ncmAuth");
 const { cacheStats, cleanupCache, handleAudioRequest } = require("./audioCache");
+const localPlayer = require("./localPlayer");
+const playerInstaller = require("./playerInstaller");
 const paths = require("./runtimePaths");
 
 const app = express();
@@ -21,6 +24,13 @@ let bilibiliLive = null;
 let activeBilibiliSession = 0;
 const wallpaperDir = paths.picDir;
 const envPath = paths.envPath;
+const qualityLabels = {
+  standard: "标准（最流畅）",
+  higher: "较高",
+  exhigh: "极高",
+  lossless: "无损",
+  hires: "Hi-Res",
+};
 
 app.use(express.json({ limit: "20mb" }));
 app.use(express.static(config.publicDir));
@@ -39,6 +49,22 @@ function writeEnvValue(key, value) {
   }
 
   fs.writeFileSync(envPath, content, "utf8");
+}
+
+function qualityPayload() {
+  return {
+    cacheQuality: config.ncmCacheQuality,
+    options: config.ncmQualityOptions.map((value) => ({
+      label: qualityLabels[value] || value,
+      value,
+    })),
+    playbackQuality: config.ncmPlaybackQuality,
+  };
+}
+
+function normalizeQuality(value, fallback) {
+  const source = String(value || "").trim().toLowerCase();
+  return config.ncmQualityOptions.includes(source) ? source : fallback;
 }
 
 async function startBilibili(roomId = config.roomId) {
@@ -213,6 +239,31 @@ app.post("/api/ncm/logout", async (req, res) => {
   }
 });
 
+app.get("/api/ncm/quality", (req, res) => {
+  res.json(qualityPayload());
+});
+
+app.post("/api/ncm/quality", (req, res) => {
+  try {
+    const playbackQuality = normalizeQuality(req.body?.playbackQuality, config.ncmPlaybackQuality);
+    const cacheQuality = normalizeQuality(req.body?.cacheQuality, config.ncmCacheQuality);
+
+    config.ncmPlaybackQuality = playbackQuality;
+    config.ncmCacheQuality = cacheQuality;
+    config.ncmQuality = playbackQuality;
+    process.env.NCM_PLAYBACK_QUALITY = playbackQuality;
+    process.env.NCM_CACHE_QUALITY = cacheQuality;
+    process.env.NCM_QUALITY = playbackQuality;
+    writeEnvValue("NCM_PLAYBACK_QUALITY", playbackQuality);
+    writeEnvValue("NCM_CACHE_QUALITY", cacheQuality);
+    writeEnvValue("NCM_QUALITY", playbackQuality);
+    io.emit("ncm:quality", qualityPayload());
+    res.json(qualityPayload());
+  } catch (error) {
+    res.status(400).json({ error: error.message });
+  }
+});
+
 app.get("/api/cache", async (req, res) => {
   try {
     res.json(await cacheStats());
@@ -232,6 +283,41 @@ app.post("/api/cache/cleanup", async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+app.get("/api/player", (req, res) => {
+  res.json(localPlayer.getState());
+});
+
+app.get("/api/player/install", (req, res) => {
+  res.json(playerInstaller.getInstallStatus());
+});
+
+app.post("/api/player/install", async (req, res) => {
+  try {
+    const result = await playerInstaller.installMpv();
+    localPlayer.refreshAvailability();
+    res.json({ ...result, player: localPlayer.getState() });
+  } catch (error) {
+    res.status(500).json({ error: error.message, install: playerInstaller.getInstallStatus() });
+  }
+});
+
+app.post("/api/player/pause", async (req, res) => {
+  res.json(await localPlayer.pause());
+});
+
+app.post("/api/player/resume", async (req, res) => {
+  res.json(await localPlayer.resume());
+});
+
+app.post("/api/player/toggle", async (req, res) => {
+  res.json(await localPlayer.togglePause());
+});
+
+app.post("/api/player/stop", (req, res) => {
+  queue.resetPlayback();
+  res.json(queue.publicState());
 });
 
 app.post("/api/request", async (req, res) => {
@@ -314,7 +400,9 @@ app.post("/api/reset", (req, res) => {
 
 io.on("connection", (socket) => {
   socket.emit("queue:state", queue.publicState());
+  socket.emit("player:state", localPlayer.getState());
   socket.emit("appearance:state", appearance.loadAppearance());
+  socket.emit("ncm:quality", qualityPayload());
   if (bilibiliStatus) {
     socket.emit("bilibili:status", bilibiliStatus);
   }
@@ -326,6 +414,8 @@ const forwardEvents = [
   "log",
   "player:idle",
   "player:play",
+  "player:state",
+  "ncm:quality",
   "appearance:state",
   "queue:added",
   "queue:state",
@@ -357,6 +447,32 @@ for (const eventName of forwardEvents) {
     }
     io.emit(eventName, payload);
   });
+}
+
+bus.on("player:ended", (event) => {
+  const current = queue.publicState().current;
+  if (!current || current.requestId !== event?.song?.requestId) return;
+  queue.nextSong(event.reason || "ended");
+});
+
+localPlayer.bind({ baseUrl: `http://127.0.0.1:${config.port}` });
+
+if (config.localPlayerAutoInstall && !localPlayer.getState().available) {
+  playerInstaller
+    .installMpv()
+    .then(() => {
+      localPlayer.refreshAvailability();
+      bus.emit("log", {
+        level: "info",
+        message: "本地 mpv 自动安装完成。",
+      });
+    })
+    .catch((error) => {
+      bus.emit("log", {
+        level: "error",
+        message: `本地 mpv 自动安装失败：${error.message}`,
+      });
+    });
 }
 
 server.on("error", (error) => {

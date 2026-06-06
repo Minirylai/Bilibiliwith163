@@ -24,7 +24,27 @@ const parseCommands = (value) => {
     .filter(Boolean);
 };
 
+const qualityOptions = ["standard", "higher", "exhigh", "lossless", "hires"];
+const audioOutputModes = ["local"];
+const localPlayerBackends = ["auto", "mpv", "ffplay"];
+
+const toQuality = (value, fallback = "standard") => {
+  const source = String(value || "").trim().toLowerCase();
+  return qualityOptions.includes(source) ? source : fallback;
+};
+
+const toAudioOutputMode = (value, fallback = "local") => {
+  const source = String(value || "").trim().toLowerCase();
+  return audioOutputModes.includes(source) ? source : fallback;
+};
+
+const toLocalPlayerBackend = (value, fallback = "auto") => {
+  const source = String(value || "").trim().toLowerCase();
+  return localPlayerBackends.includes(source) ? source : fallback;
+};
+
 const minRequestIntervalMs = toNonNegativeInteger(process.env.MIN_REQUEST_INTERVAL_MS, 8000);
+const legacyNcmQuality = toQuality(process.env.NCM_QUALITY, "standard");
 
 const config = {
   port: toNumber(process.env.PORT, 3888),
@@ -40,13 +60,22 @@ const config = {
     toNonNegativeInteger(process.env.USER_COOLDOWN_TTL_MS, 60 * 60 * 1000),
   ),
   playerVolume: Math.min(1, Math.max(0, toNumber(process.env.PLAYER_VOLUME, 0.75))),
-  ncmQuality: process.env.NCM_QUALITY || "standard",
+  ncmQuality: legacyNcmQuality,
+  ncmPlaybackQuality: toQuality(process.env.NCM_PLAYBACK_QUALITY, legacyNcmQuality),
+  ncmCacheQuality: toQuality(process.env.NCM_CACHE_QUALITY, legacyNcmQuality),
+  ncmQualityOptions: qualityOptions,
   biliProtover: toNonNegativeInteger(process.env.BILI_PROTO_VERSION, 3),
   allowDuplicates: toBoolean(process.env.ALLOW_DUPLICATES, false),
   autoplay: toBoolean(process.env.AUTOPLAY, true),
   requestTimeoutMs: toNonNegativeInteger(process.env.REQUEST_TIMEOUT_MS, 12000),
   audioCacheMaxMb: toNonNegativeInteger(process.env.AUDIO_CACHE_MAX_MB, 512),
   audioCacheMaxFiles: toNonNegativeInteger(process.env.AUDIO_CACHE_MAX_FILES, 120),
+  audioOutputMode: toAudioOutputMode(process.env.AUDIO_OUTPUT_MODE, "local"),
+  audioOutputModes,
+  localPlayerAutoInstall: toBoolean(process.env.LOCAL_PLAYER_AUTO_INSTALL, false),
+  localPlayerBackend: toLocalPlayerBackend(process.env.LOCAL_PLAYER_BACKEND, "auto"),
+  localPlayerBackends,
+  localPlayerPath: String(process.env.LOCAL_PLAYER_PATH || "").trim(),
   publicDir: paths.publicDir,
 };
 
