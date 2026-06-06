@@ -229,6 +229,19 @@ npm run debug:bili
 - [待办清单](docs/TODO.md)
 - [工作记录](docs/WORK_HISTORY.md)
 
+## 贡献
+
+欢迎任何形式的贡献！你可以通过以下方式参与：
+
+- 报告 Bug 或建议新功能：请提交 [GitHub Issue](https://github.com/Minirylai/Bilibiliwith163/issues)
+- 提交代码优化或修复：请 Fork 本仓库，创建 PR 到 `main` 分支
+- 改进文档：直接修改 README 或 `docs/` 下的内容并提交 PR
+
+提交 PR 前请确保：
+
+1. 代码通过 `npm test`（如果有）
+2. 遵循现有代码风格（ESLint 配置）
+3. 更新相关文档
 ## License
 
 MIT
